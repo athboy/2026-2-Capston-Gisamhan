@@ -1,0 +1,341 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 71;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A00000000000000000000001 /* BasketballShotAnalyzerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000101 /* BasketballShotAnalyzerApp.swift */; };
+		A00000000000000000000002 /* NormalizedGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000102 /* NormalizedGeometry.swift */; };
+		A00000000000000000000003 /* RimCalibration.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000103 /* RimCalibration.swift */; };
+		A00000000000000000000004 /* ShotAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000104 /* ShotAnalysis.swift */; };
+		A00000000000000000000005 /* VideoTransferable.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000105 /* VideoTransferable.swift */; };
+		A00000000000000000000006 /* VideoAssetInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000106 /* VideoAssetInfo.swift */; };
+		A00000000000000000000007 /* VideoFrameReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000107 /* VideoFrameReader.swift */; };
+		A00000000000000000000008 /* PoseEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000108 /* PoseEstimator.swift */; };
+		A00000000000000000000009 /* TrajectoryEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000109 /* TrajectoryEstimator.swift */; };
+		A00000000000000000000010 /* ShotPhysics.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000110 /* ShotPhysics.swift */; };
+		A00000000000000000000011 /* ShotAnalysisService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000111 /* ShotAnalysisService.swift */; };
+		A00000000000000000000012 /* ShotAnalysisViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000112 /* ShotAnalysisViewModel.swift */; };
+		A00000000000000000000013 /* VideoPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000113 /* VideoPreview.swift */; };
+		A00000000000000000000014 /* AnalysisResultCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000114 /* AnalysisResultCard.swift */; };
+		A00000000000000000000015 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000115 /* ContentView.swift */; };
+		A00000000000000000000016 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000116 /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A00000000000000000000100 /* BasketballShotAnalyzer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BasketballShotAnalyzer.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A00000000000000000000101 /* BasketballShotAnalyzerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BasketballShotAnalyzerApp.swift; sourceTree = "<group>"; };
+		A00000000000000000000102 /* NormalizedGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NormalizedGeometry.swift; sourceTree = "<group>"; };
+		A00000000000000000000103 /* RimCalibration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RimCalibration.swift; sourceTree = "<group>"; };
+		A00000000000000000000104 /* ShotAnalysis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShotAnalysis.swift; sourceTree = "<group>"; };
+		A00000000000000000000105 /* VideoTransferable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoTransferable.swift; sourceTree = "<group>"; };
+		A00000000000000000000106 /* VideoAssetInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoAssetInfo.swift; sourceTree = "<group>"; };
+		A00000000000000000000107 /* VideoFrameReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoFrameReader.swift; sourceTree = "<group>"; };
+		A00000000000000000000108 /* PoseEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseEstimator.swift; sourceTree = "<group>"; };
+		A00000000000000000000109 /* TrajectoryEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrajectoryEstimator.swift; sourceTree = "<group>"; };
+		A00000000000000000000110 /* ShotPhysics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShotPhysics.swift; sourceTree = "<group>"; };
+		A00000000000000000000111 /* ShotAnalysisService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShotAnalysisService.swift; sourceTree = "<group>"; };
+		A00000000000000000000112 /* ShotAnalysisViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShotAnalysisViewModel.swift; sourceTree = "<group>"; };
+		A00000000000000000000113 /* VideoPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPreview.swift; sourceTree = "<group>"; };
+		A00000000000000000000114 /* AnalysisResultCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisResultCard.swift; sourceTree = "<group>"; };
+		A00000000000000000000115 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A00000000000000000000116 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A00000000000000000000201 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A00000000000000000000300 = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000301 /* BasketballShotAnalyzer */,
+				A00000000000000000000302 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A00000000000000000000301 /* BasketballShotAnalyzer */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000303 /* App */,
+				A00000000000000000000304 /* Models */,
+				A00000000000000000000305 /* Services */,
+				A00000000000000000000306 /* ViewModels */,
+				A00000000000000000000307 /* Views */,
+				A00000000000000000000308 /* Resources */,
+			);
+			path = BasketballShotAnalyzer;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000302 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000100 /* BasketballShotAnalyzer.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000303 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000101 /* BasketballShotAnalyzerApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000304 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000102 /* NormalizedGeometry.swift */,
+				A00000000000000000000103 /* RimCalibration.swift */,
+				A00000000000000000000104 /* ShotAnalysis.swift */,
+				A00000000000000000000105 /* VideoTransferable.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000305 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000106 /* VideoAssetInfo.swift */,
+				A00000000000000000000107 /* VideoFrameReader.swift */,
+				A00000000000000000000108 /* PoseEstimator.swift */,
+				A00000000000000000000109 /* TrajectoryEstimator.swift */,
+				A00000000000000000000110 /* ShotPhysics.swift */,
+				A00000000000000000000111 /* ShotAnalysisService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000306 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000112 /* ShotAnalysisViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000307 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000113 /* VideoPreview.swift */,
+				A00000000000000000000114 /* AnalysisResultCard.swift */,
+				A00000000000000000000115 /* ContentView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000308 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000116 /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A00000000000000000000400 /* BasketballShotAnalyzer */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A00000000000000000000501 /* Build configuration list for PBXNativeTarget "BasketballShotAnalyzer" */;
+			buildPhases = (
+				A00000000000000000000601 /* Sources */,
+				A00000000000000000000201 /* Frameworks */,
+				A00000000000000000000602 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BasketballShotAnalyzer;
+			productName = BasketballShotAnalyzer;
+			productReference = A00000000000000000000100 /* BasketballShotAnalyzer.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A00000000000000000000700 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2600;
+				LastUpgradeCheck = 2600;
+				TargetAttributes = {
+					A00000000000000000000400 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+				};
+			};
+			buildConfigurationList = A00000000000000000000500 /* Build configuration list for PBXProject "BasketballShotAnalyzer" */;
+			compatibilityVersion = "Xcode 16.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A00000000000000000000300;
+			minimizedProjectReferenceProxies = 1;
+			productRefGroup = A00000000000000000000302 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A00000000000000000000400 /* BasketballShotAnalyzer */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A00000000000000000000602 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A00000000000000000000016 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A00000000000000000000601 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A00000000000000000000001 /* BasketballShotAnalyzerApp.swift in Sources */,
+				A00000000000000000000002 /* NormalizedGeometry.swift in Sources */,
+				A00000000000000000000003 /* RimCalibration.swift in Sources */,
+				A00000000000000000000004 /* ShotAnalysis.swift in Sources */,
+				A00000000000000000000005 /* VideoTransferable.swift in Sources */,
+				A00000000000000000000006 /* VideoAssetInfo.swift in Sources */,
+				A00000000000000000000007 /* VideoFrameReader.swift in Sources */,
+				A00000000000000000000008 /* PoseEstimator.swift in Sources */,
+				A00000000000000000000009 /* TrajectoryEstimator.swift in Sources */,
+				A00000000000000000000010 /* ShotPhysics.swift in Sources */,
+				A00000000000000000000011 /* ShotAnalysisService.swift in Sources */,
+				A00000000000000000000012 /* ShotAnalysisViewModel.swift in Sources */,
+				A00000000000000000000013 /* VideoPreview.swift in Sources */,
+				A00000000000000000000014 /* AnalysisResultCard.swift in Sources */,
+				A00000000000000000000015 /* ContentView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A00000000000000000000800 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A00000000000000000000801 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+		A00000000000000000000802 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5YYS9UB4F9;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "슛 아크 분석";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.BasketballShotAnalyzer;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphonesimulator iphoneos";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A00000000000000000000803 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5YYS9UB4F9;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "슛 아크 분석";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.BasketballShotAnalyzer;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphonesimulator iphoneos";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A00000000000000000000500 /* Build configuration list for PBXProject "BasketballShotAnalyzer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A00000000000000000000800 /* Debug */,
+				A00000000000000000000801 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A00000000000000000000501 /* Build configuration list for PBXNativeTarget "BasketballShotAnalyzer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A00000000000000000000802 /* Debug */,
+				A00000000000000000000803 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A00000000000000000000700 /* Project object */;
+}
