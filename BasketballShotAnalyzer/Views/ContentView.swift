@@ -5,6 +5,7 @@ struct ContentView: View {
     @StateObject private var viewModel = ShotAnalysisViewModel()
     @State private var selectedItem: PhotosPickerItem?
     @State private var isSelectingRim = false
+    @State private var showLive = false   // ⭐ 추가 ①: 실시간 카메라 화면을 보여줄지 기억하는 스위치
 
     var body: some View {
         Group {
@@ -15,6 +16,10 @@ struct ContentView: View {
             }
         }
         .tint(.orange)
+        // ⭐ 추가 ③: showLive가 true가 되면 화면 전체를 덮는 실시간 카메라 화면을 띄움
+        .fullScreenCover(isPresented: $showLive) {
+            LiveCameraView()
+        }
     }
 
     private var importScreen: some View {
@@ -36,6 +41,18 @@ struct ContentView: View {
                     .background(.orange, in: Capsule())
                     .foregroundStyle(.white)
             }
+
+            // ⭐ 추가 ②: "실시간 카메라 분석" 버튼
+            Button {
+                showLive = true
+            } label: {
+                Label("실시간 카메라 분석", systemImage: "camera.viewfinder")
+                    .font(.headline)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 13)
+                    .overlay(Capsule().stroke(.orange, lineWidth: 2))
+            }
+
             if case .loadingVideo = viewModel.analysisState {
                 ProgressView("영상 준비 중")
             }
@@ -92,7 +109,7 @@ struct ContentView: View {
                             .pickerStyle(.segmented)
                             .padding(.bottom, 4)
                         }
-                        
+
                         if let report = viewModel.selectedReport {
                             AnalysisResultCard(report: report)
                         }
