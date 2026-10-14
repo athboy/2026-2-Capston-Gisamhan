@@ -42,4 +42,20 @@ enum VideoLayout {
             height: size.height
         )
     }
+
+    static func filledRect(in container: CGSize, videoSize: CGSize) -> CGRect {
+        guard container.width > 0, container.height > 0,
+              videoSize.width > 0, videoSize.height > 0 else {
+            return .zero
+        }
+
+        let scale = max(container.width / videoSize.width, container.height / videoSize.height)
+        let size = CGSize(width: videoSize.width * scale, height: videoSize.height * scale)
+        return CGRect(
+            x: (container.width - size.width) / 2,
+            y: (container.height - size.height) / 2,
+            width: size.width,
+            height: size.height
+        )
+    }
 }

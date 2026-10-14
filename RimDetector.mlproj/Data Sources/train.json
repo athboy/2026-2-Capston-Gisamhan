@@ -1,0 +1,121 @@
+{
+  "activityEntities" : [
+    "dataSourceCreated",
+    [
+      {
+        "createdDate" : "2026-10-13T07:59:26Z",
+        "event" : "dataSourceCreated",
+        "id" : "E60514DF-EA40-421F-A10B-9EA7A2D1AEE2",
+        "subtitle" : "train",
+        "title" : "Data Source Created"
+      }
+    ],
+    "dataSourceMetrics",
+    [
+      {
+        "createdDate" : "2026-10-13T07:59:51Z",
+        "event" : "dataSourceMetrics",
+        "id" : "54AABF2D-A505-4020-90CD-DEE9910667AC",
+        "subtitle" : "1 Classes, 34 Items",
+        "title" : "Data Summary"
+      },
+      {
+        "createdDate" : "2026-10-13T08:39:49Z",
+        "event" : "dataSourceMetrics",
+        "id" : "D0ABA3DC-BEF1-4152-A719-A2D0152FAFF7",
+        "subtitle" : "1 Classes, 34 Items",
+        "title" : "Data Summary"
+      },
+      {
+        "createdDate" : "2026-10-14T02:07:24Z",
+        "event" : "dataSourceMetrics",
+        "id" : "6BC73DD2-4BFC-4D35-B8D3-7F2C0E1805D4",
+        "subtitle" : "1 Classes, 34 Items",
+        "title" : "Data Summary"
+      }
+    ],
+    "dataSourceTrainingStarted",
+    [
+      {
+        "createdDate" : "2026-10-13T07:59:51Z",
+        "event" : "dataSourceTrainingStarted",
+        "id" : "1F3574D7-8397-40A4-A668-40FD52E9C313",
+        "subtitle" : "RimDetector 1",
+        "title" : "Used By"
+      },
+      {
+        "createdDate" : "2026-10-13T08:39:49Z",
+        "event" : "dataSourceTrainingStarted",
+        "id" : "D98E4B97-44CC-434E-AFE5-CB82469091CB",
+        "subtitle" : "RimDetector 1",
+        "title" : "Used By"
+      },
+      {
+        "createdDate" : "2026-10-14T02:07:24Z",
+        "event" : "dataSourceTrainingStarted",
+        "id" : "F372BE6F-59B9-4C35-A31A-53B99F38DC60",
+        "subtitle" : "RimDetector 1",
+        "title" : "Used By"
+      }
+    ]
+  ],
+  "createdDate" : "2026-10-13T07:59:26Z",
+  "dataPathRelativeToProjectURL" : "../../../Downloads/Basketball%20Rim%20Detection.v1i.createml/train/",
+  "dataResult" : {
+    "classesCount" : 1,
+    "createdDate" : "2026-10-13T07:59:26Z",
+    "dataAnalysis" : {
+      "classifierAnalysis" : {
+
+      },
+      "issues" : [
+        {
+          "description" : "1 classes found, including basketball rim",
+          "severity" : "debug"
+        },
+        {
+          "description" : "Less than 50 total images found - add more to improve model validation",
+          "severity" : "warning"
+        },
+        {
+          "description" : "Smallest class is \"basketball rim\" with 34 images",
+          "severity" : "debug"
+        },
+        {
+          "description" : "Largest class is \"basketball rim\" with 34 images",
+          "severity" : "debug"
+        }
+      ],
+      "objectDetectorAnalysis" : {
+        "details" : {
+
+        },
+        "labelStats" : {
+          "basketball rim" : 34
+        }
+      },
+      "summary" : {
+        "canUseValidation" : 0,
+        "classCount" : 1,
+        "counterExamples" : 0,
+        "sampleCount" : 34,
+        "suggestedMaxIterations" : 2000
+      },
+      "warning" : "Less than 50 total images found - add more to improve model validation"
+    },
+    "dataSourceID" : "93F7F9C7-DE02-4B35-8F59-7012544A8EE5",
+    "dataURL" : "file:///Users/antaehyeon/Downloads/Basketball%20Rim%20Detection.v1i.createml/train/",
+    "itemsCount" : 34,
+    "warning" : "Less than 50 total images found - add more to improve model validation"
+  },
+  "dataURL" : "file:///Users/antaehyeon/Downloads/Basketball%20Rim%20Detection.v1i.createml/train/",
+  "experimentIDs" : [
+    "BE9701BC-7540-4062-B124-4963F1519575"
+  ],
+  "id" : "93F7F9C7-DE02-4B35-8F59-7012544A8EE5",
+  "modifiedDate" : "2026-10-14T02:07:24Z",
+  "pathType" : 0,
+  "preferredFilename" : "train",
+  "title" : "train",
+  "version" : "1.0"
+}
