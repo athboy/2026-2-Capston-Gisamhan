@@ -1,0 +1,73 @@
+{
+  "activityEntities" : [
+    "dataSourceCreated",
+    [
+      {
+        "createdDate" : "2026-10-13T07:59:38Z",
+        "event" : "dataSourceCreated",
+        "id" : "B86D35DF-B8C6-4A8A-9EA1-322A7A23AA02",
+        "subtitle" : "valid",
+        "title" : "Data Source Created"
+      }
+    ]
+  ],
+  "createdDate" : "2026-10-13T07:59:38Z",
+  "dataPathRelativeToProjectURL" : "../../../Downloads/Basketball%20Rim%20Detection.v1i.createml/valid/",
+  "dataResult" : {
+    "classesCount" : 1,
+    "createdDate" : "2026-10-13T07:59:38Z",
+    "dataAnalysis" : {
+      "classifierAnalysis" : {
+
+      },
+      "issues" : [
+        {
+          "description" : "1 classes found, including basketball rim",
+          "severity" : "debug"
+        },
+        {
+          "description" : "Less than 50 total images found - add more to improve model validation",
+          "severity" : "warning"
+        },
+        {
+          "description" : "Smallest class is \"basketball rim\" with 9 images",
+          "severity" : "debug"
+        },
+        {
+          "description" : "Largest class is \"basketball rim\" with 9 images",
+          "severity" : "debug"
+        }
+      ],
+      "objectDetectorAnalysis" : {
+        "details" : {
+
+        },
+        "labelStats" : {
+          "basketball rim" : 9
+        }
+      },
+      "summary" : {
+        "canUseValidation" : 0,
+        "classCount" : 1,
+        "counterExamples" : 0,
+        "sampleCount" : 9,
+        "suggestedMaxIterations" : 1000
+      },
+      "warning" : "Less than 50 total images found - add more to improve model validation"
+    },
+    "dataSourceID" : "3F8CED03-FA9D-4FE1-B66D-01D0A2F1FB26",
+    "dataURL" : "file:///Users/antaehyeon/Downloads/Basketball%20Rim%20Detection.v1i.createml/valid/",
+    "itemsCount" : 9,
+    "warning" : "Less than 50 total images found - add more to improve model validation"
+  },
+  "dataURL" : "file:///Users/antaehyeon/Downloads/Basketball%20Rim%20Detection.v1i.createml/valid/",
+  "experimentIDs" : [
+    "BE9701BC-7540-4062-B124-4963F1519575"
+  ],
+  "id" : "3F8CED03-FA9D-4FE1-B66D-01D0A2F1FB26",
+  "modifiedDate" : "2026-10-13T08:07:05Z",
+  "pathType" : 0,
+  "preferredFilename" : "valid",
+  "title" : "valid",
+  "version" : "1.0"
+}

@@ -7,6 +7,9 @@ final class LiveShotAnalyzer: @unchecked Sendable {
     var onRim: (@Sendable (RimCalibration) -> Void)?
     var onBall: (@Sendable ([NormalizedPoint]) -> Void)?
     var onShot: (@Sendable (ShotAnalysisReport) -> Void)?
+    
+    // ⭐ 추가: 방향 프로퍼티 (가로/세로 모드 대응)
+    var orientation: CGImagePropertyOrientation = .up
 
     private struct Candidate {
         let a: CGFloat, b: CGFloat, c: CGFloat
@@ -22,12 +25,13 @@ final class LiveShotAnalyzer: @unchecked Sendable {
     private let lock = NSLock()
     private var _rim: RimCalibration?
     private var manualRim = false
-    private var _calibration: CameraCalibration?   // ⭐ 추가: 고정된 보정 결과
+    private var _calibration: CameraCalibration?
 
     private var frameCount = 0
     private var pending: Candidate?
     private var lastValidTime = 0.0
     private var lastShotTime = -10.0
+    private var lastRatio: CGFloat = 16.0 / 9.0 // flush() 사용을 위한 마지막 프레임 비율 저장
 
     var hasModel: Bool { rimDetector != nil }
 
@@ -47,7 +51,7 @@ final class LiveShotAnalyzer: @unchecked Sendable {
             _rim = rim
             manualRim = true
         } else {
-            manualRim = false   // 자동 모드로 복귀 (기존 림 값은 다음 검출 때 갱신)
+            manualRim = false   // 자동 모드로 복귀
         }
     }
 
@@ -56,7 +60,6 @@ final class LiveShotAnalyzer: @unchecked Sendable {
         return _rim
     }
 
-    // ⭐ 추가: 보정 결과 넣기/꺼내기
     func setCalibration(_ calibration: CameraCalibration?) {
         lock.lock(); defer { lock.unlock() }
         _calibration = calibration
@@ -67,17 +70,18 @@ final class LiveShotAnalyzer: @unchecked Sendable {
         return _calibration
     }
 
-    private func updateRimIfNeeded(from sampleBuffer: CMSampleBuffer) {
-        // 림은 고정 물체라 매 프레임 돌릴 필요 없음 → 12프레임마다 (60fps 기준 초당 5회)
+    private func updateRimIfNeeded(from pixelBuffer: CVPixelBuffer) {
+        // 12프레임마다 검사
         guard let detector = rimDetector, frameCount % 12 == 1 else { return }
 
         lock.lock()
         let manual = manualRim
         let old = _rim
         lock.unlock()
-        guard !manual, let found = detector.detect(in: sampleBuffer) else { return }
+        
+        // ⭐ 수정: 오버로드된 detect(pixelBuffer:orientation:) 호출
+        guard !manual, let found = detector.detect(in: pixelBuffer, orientation: orientation) else { return }
 
-        // 지수이동평균으로 흔들림 줄이기
         let smoothed: RimCalibration
         if let old {
             let k: CGFloat = 0.3
@@ -95,25 +99,30 @@ final class LiveShotAnalyzer: @unchecked Sendable {
         onRim?(smoothed)
     }
 
-    // MARK: - 프레임 처리 (카메라 큐에서 호출됨)
-
+    // MARK: - 프레임 처리 (코어 로직 분리)
+    
+    /// 기존 실시간 카메라 큐 인터페이스 유지
     func process(_ sampleBuffer: CMSampleBuffer) {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-        frameCount += 1
         let time = CMSampleBufferGetPresentationTimeStamp(sampleBuffer).seconds
         let ratio = CGFloat(CVPixelBufferGetHeight(pixelBuffer)) / CGFloat(CVPixelBufferGetWidth(pixelBuffer))
+        process(pixelBuffer: pixelBuffer, time: time, ratio: ratio)
+    }
 
-        updateRimIfNeeded(from: sampleBuffer)
+    /// ⭐ 추가: 녹화 영상에서도 재활용할 수 있도록 코어 로직 분리
+    func process(pixelBuffer: CVPixelBuffer, time: Double, ratio: CGFloat) {
+        frameCount += 1
+        lastRatio = ratio
+        updateRimIfNeeded(from: pixelBuffer)
 
-        // 이전 프레임과 비교(Optical Flow)하는 요청이라 같은 handler를 계속 재사용해야 함
         do {
-            try handler.perform([trajectoryRequest], on: sampleBuffer, orientation: .up)
+            // ⭐ 수정: 프로퍼티로 들고 있는 orientation 적용
+            try handler.perform([trajectoryRequest], on: pixelBuffer, orientation: orientation)
         } catch {
             return
         }
         let observations = trajectoryRequest.results ?? []
 
-        // 화면에 보여줄 공 궤적 (가장 그럴듯한 것 하나)
         if let visible = observations.max(by: {
             $0.confidence * Float($0.detectedPoints.count) < $1.confidence * Float($1.detectedPoints.count)
         }) {
@@ -124,7 +133,6 @@ final class LiveShotAnalyzer: @unchecked Sendable {
 
         guard let rim = currentRim else { return }
 
-        // 슛 후보 선별
         let candidates = observations.compactMap { candidate(from: $0, rim: rim) }
         if let best = candidates.min(by: { $0.score < $1.score }),
            best.score < 0.8,
@@ -133,11 +141,18 @@ final class LiveShotAnalyzer: @unchecked Sendable {
             lastValidTime = time
         }
 
-        // 유효 궤적이 0.8초간 더 안 들어오면 슛이 끝난 것으로 보고 확정
         if let pending, time - lastValidTime > 0.8 {
             finalize(pending, rim: rim, heightToWidthRatio: ratio)
             self.pending = nil
             lastShotTime = time
+        }
+    }
+    
+    // ⭐ 추가: 영상이 끝났을 때 분석 대기 중인 잔여 후보 슛을 확정
+    func flush() {
+        if let p = pending, let rim = currentRim {
+            finalize(p, rim: rim, heightToWidthRatio: lastRatio)
+            pending = nil
         }
     }
 
@@ -154,24 +169,19 @@ final class LiveShotAnalyzer: @unchecked Sendable {
         let a = CGFloat(coef.x), b = CGFloat(coef.y), c = CGFloat(coef.z)
         let rimX = rim.center.x
 
-        // 1) 아래로 굽은 포물선 (Vision 좌표: y가 위로 증가 → a < 0)
         guard a < -0.001 else { return nil }
 
-        // 2) 제자리 노이즈 제거
         let xs = all.map(\.x)
         let minX = xs.min() ?? 0, maxX = xs.max() ?? 1
         guard maxX - minX > 0.08 else { return nil }
 
-        // 3) 림 근처까지 이어지는 궤적
         guard rimX > minX - 0.2, rimX < maxX + 0.2 else { return nil }
 
-        // 4) 림이 포물선 정점 "뒤쪽"(하강 구간)에 있어야 함 → 올라가는 중인 궤적 배제
         let direction = last.x - first.x
         guard abs(direction) > 0.01 else { return nil }
         let apexX = -b / (2 * a)
         guard (rimX - apexX) * direction > 0 else { return nil }
 
-        // 5) 림 높이와 크게 어긋나면 배제
         let predictedY = a * rimX * rimX + b * rimX + c
         let verticalError = abs(predictedY - rim.center.y)
         guard verticalError < 0.2 else { return nil }
@@ -187,7 +197,6 @@ final class LiveShotAnalyzer: @unchecked Sendable {
     // MARK: - 슛 확정 → 리포트
 
     private func finalize(_ p: Candidate, rim: RimCalibration, heightToWidthRatio: CGFloat) {
-        // ⭐ 수정: 보정이 고정되어 있으면 보정된 값을 사용
         let calibration = currentCalibration
 
         let measured: Double
@@ -219,7 +228,6 @@ final class LiveShotAnalyzer: @unchecked Sendable {
         else if difference < 0 { feedback = .flat }
         else { feedback = .steep }
 
-        // 화면에 그릴 포물선: 공이 처음 잡힌 x → 림 x
         let steps = 40
         let startX = p.start.x, endX = rim.center.x
         let path = (0...steps).map { i -> NormalizedPoint in

@@ -1,0 +1,29 @@
+{
+  "activityEntities" : [
+    "projectCreated",
+    [
+      {
+        "createdDate" : "2026-10-13T07:59:07Z",
+        "event" : "projectCreated",
+        "id" : "B4626877-DFC8-4446-863C-ABAA1E7A5642",
+        "subtitle" : "RimDetector",
+        "title" : "Project Created"
+      }
+    ]
+  ],
+  "authorName" : "안태현",
+  "createdDate" : "2026-10-13T07:59:07Z",
+  "description" : "",
+  "id" : "566AFFC5-1C84-4642-A035-6C47C20FC1AF",
+  "license" : "",
+  "location" : "",
+  "modifiedDate" : "2026-10-13T07:59:07Z",
+  "projectName" : "RimDetector",
+  "settingsEntity" : {
+    "snapshotOnExtendTraining" : true,
+    "snapshotOnResumeTraining" : false
+  },
+  "taskType" : "objectDetector",
+  "title" : "Object Detection",
+  "version" : "1.1"
+}

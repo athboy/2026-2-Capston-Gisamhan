@@ -1,4 +1,4 @@
-@preconcurrency import AVFoundation   // ⭐ 수정 ①: 앞에 @preconcurrency 추가
+@preconcurrency import AVFoundation
 
 enum LiveCameraError: LocalizedError {
     case denied
@@ -6,13 +6,18 @@ enum LiveCameraError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .denied: "카메라 권한이 없습니다. 설정 앱에서 허용해 주세요."
-        case .unavailable: "카메라를 사용할 수 없습니다."
+        case .denied: return "카메라 권한이 없습니다. 설정 앱에서 허용해 주세요."
+        case .unavailable: return "카메라를 사용할 수 없습니다."
         }
     }
 }
 
 final class LiveCameraService: NSObject, @unchecked Sendable {
+    /// 분석 프레임 크기 (가로 1920x1080)
+    static let frameSize = CGSize(width: 1920, height: 1080)
+    /// 가로 거치(Landscape Right) 기준 회전 각도. (거꾸로 보이면 180으로 변경)
+    static let landscapeRotationAngle: CGFloat = 0
+
     let session = AVCaptureSession()
     var onFrame: (@Sendable (CMSampleBuffer) -> Void)?
 
@@ -26,14 +31,12 @@ final class LiveCameraService: NSObject, @unchecked Sendable {
             try configure()
             configured = true
         }
-        // ⭐ 수정 ②: [session] 대신 [self] 사용 (self는 @unchecked Sendable이라 경고가 안 나요)
         queue.async { [self] in
             if !session.isRunning { session.startRunning() }
         }
     }
 
     func stop() {
-        // ⭐ 수정 ③: 여기도 [session] 대신 [self]
         queue.async { [self] in
             if session.isRunning { session.stopRunning() }
         }
@@ -45,11 +48,10 @@ final class LiveCameraService: NSObject, @unchecked Sendable {
             throw LiveCameraError.unavailable
         }
 
-        // 1080p + 가능하면 60fps 포맷 선택 (림 근처에서 궤적 점을 더 많이 얻기 위함)
         try configureFormat(device)
 
         session.beginConfiguration()
-        session.sessionPreset = .inputPriority   // 위에서 고른 activeFormat을 유지
+        session.sessionPreset = .inputPriority
 
         guard session.canAddInput(input) else {
             session.commitConfiguration()
@@ -58,7 +60,7 @@ final class LiveCameraService: NSObject, @unchecked Sendable {
         session.addInput(input)
 
         output.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
-        output.alwaysDiscardsLateVideoFrames = true   // 분석이 느리면 오래된 프레임은 버림 (실시간성 유지)
+        output.alwaysDiscardsLateVideoFrames = true
         output.setSampleBufferDelegate(self, queue: queue)
 
         guard session.canAddOutput(output) else {
@@ -68,11 +70,9 @@ final class LiveCameraService: NSObject, @unchecked Sendable {
         session.addOutput(output)
 
         if let connection = output.connection(with: .video) {
-            // 세로 화면 기준으로 "똑바로 선" 프레임을 받는다 → Vision orientation은 .up
-            if connection.isVideoRotationAngleSupported(90) {
-                connection.videoRotationAngle = 90
+            if connection.isVideoRotationAngleSupported(Self.landscapeRotationAngle) {
+                connection.videoRotationAngle = Self.landscapeRotationAngle
             }
-            // 손떨림 보정은 화면을 크롭/워핑해서 궤적 좌표를 왜곡할 수 있어 끈다
             if connection.isVideoStabilizationSupported {
                 connection.preferredVideoStabilizationMode = .off
             }

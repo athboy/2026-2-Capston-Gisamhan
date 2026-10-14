@@ -20,8 +20,8 @@ enum ShootingGuide {
     static let toleranceX: CGFloat = 0.10
     static let toleranceY: CGFloat = 0.06
 
-    /// 림 폭 허용 범위 (대략 카메라에서 림까지 4~9m)
-    static let widthRange: ClosedRange<CGFloat> = 0.05...0.11
+    /// ⭐ 수정: 림 폭 허용 범위를 가로 폭 기준으로 환산 (0.05~0.11 → 0.028~0.062)
+    static let widthRange: ClosedRange<CGFloat> = 0.028...0.062
 
     /// 좌우 기울기 허용 (도)
     static let maxRoll: Double = 3

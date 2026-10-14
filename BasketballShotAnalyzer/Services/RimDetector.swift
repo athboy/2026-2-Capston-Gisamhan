@@ -21,9 +21,15 @@ final class RimDetector: @unchecked Sendable {
         self.request = request
     }
 
-    /// 프레임에서 림을 찾아 RimCalibration(중심 + 폭)으로 반환
-    func detect(in sampleBuffer: CMSampleBuffer) -> RimCalibration? {
-        let handler = VNImageRequestHandler(cmSampleBuffer: sampleBuffer, orientation: .up)
+    /// 실시간 카메라용 (CMSampleBuffer)
+    func detect(in sampleBuffer: CMSampleBuffer, orientation: CGImagePropertyOrientation = .up) -> RimCalibration? {
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return nil }
+        return detect(in: pixelBuffer, orientation: orientation)
+    }
+    
+    /// ⭐ 추가: 녹화 영상용 (CVPixelBuffer + orientation 오버로드)
+    func detect(in pixelBuffer: CVPixelBuffer, orientation: CGImagePropertyOrientation = .up) -> RimCalibration? {
+        let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: orientation)
         guard (try? handler.perform([request])) != nil else { return nil }
 
         let objects = (request.results as? [VNRecognizedObjectObservation]) ?? []
