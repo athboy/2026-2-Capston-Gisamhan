@@ -6,7 +6,7 @@ import Charts
 
 struct CameraPreviewView: UIViewRepresentable {
     let session: AVCaptureSession
-    let angle: CGFloat   // 가로 = 0 또는 180
+    let angle: CGFloat
 
     final class PreviewUIView: UIView {
         override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
@@ -42,43 +42,43 @@ struct CameraPreviewView: UIViewRepresentable {
     }
 }
 
-// MARK: - 실시간 분석 화면 (가로 전용)
+// MARK: - 실시간 분석 화면
 
 struct LiveCameraView: View {
     @StateObject private var vm = LiveShotViewModel()
     @Environment(\.dismiss) private var dismiss
 
-    /// 가로 화면에서의 림 폭 기본값 (세로 기준 7.5% × 가로 비율 0.5625)
     @State private var manualWidth: Double = 0.075 * 1080.0 / 1920.0
-
-    /// 메뉴(아이콘 모음)가 펼쳐져 있는지
     @State private var menuOpen = false
-
-    /// ⭐ 추가: 왼쪽 패널이 펼쳐져 있는지 (촬영 준비가 끝나면 자동으로 접혀요)
     @State private var panelExpanded = true
 
     var body: some View {
-        GeometryReader { screen in
-            let videoSize = filledVideoSize(in: screen.size)
+        ZStack {
+            // 1. 카메라 영상 레이어 (전체화면 100% 채움)
+            GeometryReader { fullScreen in
+                let videoSize = filledVideoSize(in: fullScreen.size)
 
-            ZStack {
-                Color.black
+                ZStack {
+                    Color.black
 
-                videoLayer(size: videoSize)
-                    .frame(width: videoSize.width, height: videoSize.height)
-                    .position(x: screen.size.width / 2, y: screen.size.height / 2)
-
-                uiLayer(screen: screen.size, insets: screen.safeAreaInsets)
+                    videoLayer(size: videoSize, screenSize: fullScreen.size)
+                        .frame(width: videoSize.width, height: videoSize.height)
+                        .position(x: fullScreen.size.width / 2, y: fullScreen.size.height / 2)
+                }
+                .frame(width: fullScreen.size.width, height: fullScreen.size.height)
+                .clipped()
+                .onChange(of: fullScreen.size) { _, _ in
+                    vm.refreshOrientation()
+                }
             }
-            .frame(width: screen.size.width, height: screen.size.height)
-            .clipped()
-            .onChange(of: screen.size) { _, _ in
-                vm.refreshOrientation()
+            .ignoresSafeArea()
+
+            // 2. UI 컨트롤 레이어 (다이나믹 아일랜드 안전 영역 내부 배치)
+            GeometryReader { safeScreen in
+                uiLayer(screen: safeScreen.size)
             }
         }
-        .ignoresSafeArea()
         .statusBarHidden(true)
-        .background(Color.black.ignoresSafeArea())
         .onAppear {
             UIDevice.current.beginGeneratingDeviceOrientationNotifications()
             UIApplication.shared.isIdleTimerDisabled = true
@@ -94,9 +94,8 @@ struct LiveCameraView: View {
         }
         .onChange(of: vm.orientation) { _, new in
             manualWidth = 0.075 * Double(new.widthScale)
-            panelExpanded = true   // ⭐ 방향이 바뀌면 림을 다시 찾아야 하니 패널을 펼쳐요
+            panelExpanded = true
         }
-        // ⭐ 촬영 준비가 되면 패널을 왼쪽 위 작은 상자로 접어요
         .onChange(of: vm.isReady) { _, ready in
             if ready {
                 withAnimation(.easeOut(duration: 0.2)) { panelExpanded = false }
@@ -105,19 +104,18 @@ struct LiveCameraView: View {
     }
 
     private func clamped(_ value: CGFloat, _ low: CGFloat, _ high: CGFloat) -> CGFloat {
-        min(max(value, low), high)
+        min(max(value, low), min(max(low, high), high))
     }
 
-    /// 화면을 꽉 채우려면 영상(16:9)을 얼마나 키워야 하는지 계산
     private func filledVideoSize(in screen: CGSize) -> CGSize {
-        let aspect: CGFloat = 16.0 / 9.0   // 가로 ÷ 세로
+        let aspect: CGFloat = 16.0 / 9.0
         let width = max(screen.width, screen.height * aspect)
         return CGSize(width: width, height: width / aspect)
     }
 
-    // MARK: 영상 판 (카메라 + 림 + 궤적 + 가이드 + 라벨)
+    // MARK: - 영상 레이어 (카메라 + 림 + 궤적 + 가이드 + 팝업 태그)
 
-    private func videoLayer(size: CGSize) -> some View {
+    private func videoLayer(size: CGSize, screenSize: CGSize) -> some View {
         ZStack {
             CameraPreviewView(session: vm.camera.session, angle: vm.orientation.captureAngle)
 
@@ -130,9 +128,9 @@ struct LiveCameraView: View {
             if let rim = vm.rim {
                 Capsule()
                     .stroke(HUD.cyan, style: StrokeStyle(lineWidth: 3, dash: [7, 4]))
-                    .frame(width: size.width * rim.widthFraction, height: 13)
+                    .frame(width: size.width * rim.widthFraction, height: 14)
                     .position(x: size.width * rim.center.x, y: size.height * (1 - rim.center.y))
-                    .shadow(color: HUD.cyan.opacity(0.9), radius: 6)
+                    .shadow(color: HUD.cyan.opacity(0.8), radius: 6)
             }
 
             Path { path in
@@ -141,7 +139,7 @@ struct LiveCameraView: View {
                     if i == 0 { path.move(to: pt) } else { path.addLine(to: pt) }
                 }
             }
-            .stroke(HUD.orange, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+            .stroke(HUD.orange, style: StrokeStyle(lineWidth: 3.5, lineCap: .round, lineJoin: .round))
             .shadow(color: HUD.orange.opacity(0.8), radius: 4)
 
             if let shot = vm.lastShot {
@@ -151,15 +149,14 @@ struct LiveCameraView: View {
                         if i == 0 { path.move(to: pt) } else { path.addLine(to: pt) }
                     }
                 }
-                .stroke(Color.white, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
-                .shadow(color: HUD.cyan.opacity(0.9), radius: 6)
+                .stroke(HUD.gold, style: StrokeStyle(lineWidth: 3.5, lineCap: .round, lineJoin: .round))
+                .shadow(color: HUD.gold.opacity(0.6), radius: 6)
             }
 
-            shotTags(size: size)
+            shotTags(size: size, screenSize: screenSize)
         }
         .contentShape(Rectangle())
         .onTapGesture(coordinateSpace: .local) { location in
-            // 화면을 탭하면 펼쳐진 메뉴는 접어요
             if menuOpen {
                 withAnimation(.easeOut(duration: 0.2)) { menuOpen = false }
             }
@@ -171,183 +168,190 @@ struct LiveCameraView: View {
         }
     }
 
-    // MARK: 화면 판 (격자, 괄호, 버튼, 패널)
+    // MARK: - HUD 컨트롤 레이어
 
-    /// 림 크기 슬라이더를 보여줄 때인가요?
     private var showRimSlider: Bool {
         vm.isManualRim && vm.calibration == nil
             && (vm.calibrationStep == .off || vm.calibrationStep == .rim)
     }
 
-    private func uiLayer(screen: CGSize, insets: EdgeInsets) -> some View {
-        let sideInset = max(insets.leading, insets.trailing)
-
-        return ZStack {
+    private func uiLayer(screen: CGSize) -> some View {
+        ZStack {
             GridOverlay()
-            CornerBrackets(length: 26)
-                .stroke(HUD.cyan.opacity(0.85), lineWidth: 2)
-                .padding(.top, max(insets.top, 8))
-                .padding(.bottom, max(insets.bottom, 8))
-                .padding(.horizontal, max(sideInset, 8))
         }
         .frame(width: screen.width, height: screen.height)
         .allowsHitTesting(false)
-        // 위쪽 바 (메뉴 버튼 + 상태 글자)
+        // 1. 골대 반대편: 사이드 대시보드 패널
+        .overlay(alignment: vm.rimOnRight ? .topLeading : .topTrailing) {
+            sidePanel(screen: screen)
+        }
+        // 2. 골대 쪽 아래 구석: 상태 알림('SCANNING · 림 탐색 중...') 및 수동 림 크기 슬라이더
+        .overlay(alignment: vm.rimOnRight ? .bottomTrailing : .bottomLeading) {
+            bottomRimOverlay
+                .padding(vm.rimOnRight ? .trailing : .leading, 12)
+                .padding(.bottom, 10)
+        }
+        // 3. 상단 바 및 형광 노랑 알림 배너 (최상단 레이어)
         .overlay(alignment: .top) {
             topBar
-                .padding(.top, insets.top)
-                .padding(.horizontal, sideInset)
+                .padding(.top, 8)
+                .padding(.horizontal, 12)
+                .zIndex(10)
         }
-        // ⭐ 림 반대편 위쪽: 펼친 패널 또는 접힌 작은 상자
-        .overlay(alignment: vm.rimOnRight ? .topLeading : .topTrailing) {
-            sidePanel(screen: screen, insets: insets, sideInset: sideInset)
-        }
-        // 림 크기 슬라이더 (림 쪽 아래 구석)
-        .overlay(alignment: vm.rimOnRight ? .bottomTrailing : .bottomLeading) {
+    }
+
+    private var bottomRimOverlay: some View {
+        VStack(alignment: vm.rimOnRight ? .trailing : .leading, spacing: 8) {
             if showRimSlider {
                 rimSizePanel
-                    .padding(vm.rimOnRight ? .trailing : .leading, sideInset + 12)
-                    .padding(.bottom, insets.bottom + 8)
             }
+            statusTag
         }
     }
 
-    // MARK: ⭐ 옆 패널 (펼침 / 접힘)
+    // MARK: - 사이드 대시보드 패널 (스크롤 상·하단 그라데이션 페이드 적용)
 
     @ViewBuilder
-    private func sidePanel(screen: CGSize, insets: EdgeInsets, sideInset: CGFloat) -> some View {
-        // 보정 중에는 버튼(다음, 취소 등)이 패널 안에 있어서 항상 펼쳐 둬요
+    private func sidePanel(screen: CGSize) -> some View {
         let calibrating = vm.calibrationStep != .off
+        let panelWidth = min(245, screen.width * 0.34)
 
         if panelExpanded || calibrating {
-            ScrollView {
-                VStack(spacing: 10) {
-                    if !calibrating { collapseButton }
+            VStack(spacing: 6) {
+                if !calibrating { collapseButton }
+
+                ScrollView(.vertical, showsIndicators: false) {
                     panelContent
+                        .padding(.top, 6)
+                        .padding(.bottom, 26)
                 }
-                .padding(8)
+                .mask(
+                    LinearGradient(
+                        stops: [
+                            .init(color: .clear, location: 0.0),
+                            .init(color: .black, location: 0.04),
+                            .init(color: .black, location: 0.85),
+                            .init(color: .clear, location: 1.0)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
             }
-            .frame(width: min(260, screen.width * 0.4))
-            .frame(maxHeight: screen.height - insets.top - insets.bottom - 72)
-            .padding(.top, insets.top + 64)
-            .padding(.horizontal, sideInset + 8)
+            .frame(width: panelWidth)
+            .frame(maxHeight: screen.height - 60)
+            .padding(.top, 54)
+            .padding(vm.rimOnRight ? .leading : .trailing, 12)
         } else {
             summaryBox
-                .padding(.top, insets.top + 64)
-                .padding(.horizontal, sideInset + 8)
+                .frame(width: 210)
+                .padding(.top, 54)
+                .padding(vm.rimOnRight ? .leading : .trailing, 12)
         }
     }
 
-    /// 펼친 패널 맨 위의 "접기" 버튼
     private var collapseButton: some View {
         Button {
             withAnimation(.easeOut(duration: 0.2)) { panelExpanded = false }
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "chevron.up")
-                Text("접기")
+                Text("패널 접기")
             }
-            .font(HUD.font(13, .semibold))
-            .foregroundStyle(Color.white)
-            .frame(maxWidth: .infinity, minHeight: 36)
-            .background(Color.black.opacity(0.75))
-            .overlay(Rectangle().stroke(HUD.cyan.opacity(0.6), lineWidth: 1))
+            .font(HUD.font(12, .bold))
+            .foregroundStyle(Color.white.opacity(0.9))
+            .frame(maxWidth: .infinity, minHeight: 32)
+            .background(.ultraThinMaterial)
+            .background(Color.black.opacity(0.5))
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(Color.white.opacity(0.2), lineWidth: 1))
         }
     }
 
     private func miniStat(_ title: String, _ value: String, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 1) {
             Text(title)
-                .font(HUD.font(9, .semibold))
+                .font(HUD.font(10, .bold))
                 .foregroundStyle(HUD.dim)
             Text(value)
-                .font(HUD.font(20).monospacedDigit())
+                .font(HUD.font(20, .heavy).monospacedDigit())
                 .foregroundStyle(color)
         }
     }
 
-    /// 접힌 작은 상자: 누르면 펼쳐져요
     private var summaryBox: some View {
         Button {
             withAnimation(.easeOut(duration: 0.2)) { panelExpanded = true }
         } label: {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 6) {
-                    Image(systemName: vm.isReady ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                        .foregroundStyle(vm.isReady ? HUD.cyan : HUD.orange)
+                    Circle()
+                        .fill(vm.isReady ? HUD.gold : HUD.orange)
+                        .frame(width: 8, height: 8)
                     Text(vm.isReady ? "READY" : "CHECK")
-                        .font(HUD.font(14))
-                    Spacer(minLength: 8)
+                        .font(HUD.font(13, .heavy))
+                    Spacer()
                     Image(systemName: "chevron.down")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(HUD.dim)
                 }
 
-                HStack(spacing: 12) {
-                    miniStat("SHOTS", "\(vm.shots.count)", color: Color.white)
+                HStack(spacing: 14) {
+                    miniStat("SHOTS", "\(vm.shots.count)", color: .white)
                     miniStat("GOAL", "\(vm.madeCount)", color: ShotColor.made)
-                    miniStat("AVG",
-                             vm.averageAngle.map { String(format: "%.1f°", $0) } ?? "–",
-                             color: HUD.orange)
+                    miniStat("AVG", vm.averageAngle.map { String(format: "%.1f°", $0) } ?? "–", color: HUD.gold)
                 }
 
-                Text("TARGET 45° ± 2°")
-                    .font(HUD.font(10, .semibold))
-                    .foregroundStyle(HUD.gold)
-
-                // 방금 던진 슛 결과 (4초 동안만 보여요)
                 if let shot = vm.lastShot {
+                    DottedLine()
                     HStack(spacing: 8) {
-                        Rectangle()
-                            .fill(bannerColor(shot))
-                            .frame(width: 3)
-                        VStack(alignment: .leading, spacing: 2) {
-                            HStack(spacing: 6) {
-                                Text(String(format: "%.1f°", shot.measuredEntryAngle))
-                                    .font(HUD.font(22).monospacedDigit())
-                                    .foregroundStyle(HUD.orange)
-                                goalTag(shot)
-                            }
-                            Text(shot.feedback.title)
-                                .font(.caption2)
-                                .foregroundStyle(Color.white)
-                        }
+                        Text(String(format: "%.1f°", shot.measuredEntryAngle))
+                            .font(HUD.font(22, .black).monospacedDigit())
+                            .foregroundStyle(HUD.orange)
+                        goalTag(shot)
+                        Spacer()
+                        Text(shot.feedback.title)
+                            .font(HUD.font(12, .bold))
+                            .foregroundStyle(.white)
                     }
-                    .fixedSize(horizontal: false, vertical: true)
-                }
-
-                // 준비가 안 됐으면 무엇을 해야 하는지 한 줄로 알려줘요
-                if !vm.isReady, let hint = vm.firstHint {
-                    Text("▶ \(hint)")
+                } else if !vm.isReady, let hint = vm.firstHint {
+                    Text(hint)
                         .font(.caption2)
                         .foregroundStyle(HUD.gold)
+                        .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .foregroundStyle(Color.white)
-            .hudPanel(tint: vm.isReady ? HUD.cyan : HUD.orange)
-            .frame(width: 210)
+            .hudPanel(tint: vm.isReady ? HUD.gold : HUD.orange)
         }
         .buttonStyle(.plain)
     }
 
-    // MARK: 슛 라벨
+    // MARK: - 슛 궤적 라벨 (다이나믹 아일랜드 침범 방지 안전 범위 적용)
 
-    private func shotTags(size: CGSize) -> some View {
-        ZStack {
+    private func shotTags(size: CGSize, screenSize: CGSize) -> some View {
+        let xCrop = max(0, (size.width - screenSize.width) / 2)
+        let yCrop = max(0, (size.height - screenSize.height) / 2)
+        let safeMinX = xCrop + 115
+        let safeMaxX = size.width - xCrop - 115
+        let safeMinY = yCrop + 75
+        let safeMaxY = size.height - yCrop - 75
+
+        return ZStack {
             if let shot = vm.lastShot {
                 if let peak = shot.path.points.max(by: { $0.y < $1.y }) {
                     HUDTag(text: "SHOT ARC")
                         .position(
-                            x: clamped(size.width * peak.x, 60, size.width - 60),
-                            y: clamped(size.height * (1 - peak.y) - 26, 90, size.height - 90)
+                            x: clamped(size.width * peak.x, safeMinX, safeMaxX),
+                            y: clamped(size.height * (1 - peak.y) - 24, safeMinY, safeMaxY)
                         )
                 }
                 if let rim = vm.rim {
                     HUDTag(text: "SHOT ANGLE \(String(format: "%.1f", shot.measuredEntryAngle))°")
                         .position(
-                            x: clamped(size.width * rim.center.x, 100, size.width - 100),
-                            y: clamped(size.height * (1 - rim.center.y) + 30, 90, size.height - 90)
+                            x: clamped(size.width * rim.center.x, safeMinX, safeMaxX),
+                            y: clamped(size.height * (1 - rim.center.y) + 30, safeMinY, safeMaxY)
                         )
                 }
             }
@@ -355,7 +359,7 @@ struct LiveCameraView: View {
         .allowsHitTesting(false)
     }
 
-    // MARK: 가이드 (점선 박스 + 수평선)
+    // MARK: - 촬영 가이드 오버레이
 
     private func guideOverlay(size: CGSize) -> some View {
         let center = ShootingGuide.targetCenter(rimOnRight: vm.rimOnRight)
@@ -363,38 +367,42 @@ struct LiveCameraView: View {
         let boxHeight = size.height * ShootingGuide.boxHalfHeight(vm.orientation) * 2
         let boxX = size.width * center.x
         let boxY = size.height * (1 - center.y)
-        let color: Color = vm.isReady ? HUD.cyan : Color.white
-        let levelColor: Color = abs(vm.tiltRoll) <= ShootingGuide.maxRoll ? HUD.cyan : HUD.orange
+        let color: Color = vm.isReady ? HUD.gold : Color.white.opacity(0.85)
+        let levelColor: Color = abs(vm.tiltRoll) <= ShootingGuide.maxRoll ? HUD.gold : HUD.orange
 
         return ZStack {
-            Rectangle()
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(color, style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
                 .frame(width: boxWidth, height: boxHeight)
                 .position(x: boxX, y: boxY)
 
-            Text("림을 여기에")
-                .font(HUD.font(12, .semibold))
+            Text("림을 여기에 맞추세요")
+                .font(HUD.font(12, .bold))
                 .foregroundStyle(color)
-                .position(x: boxX, y: boxY - boxHeight / 2 - 10)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(Color.black.opacity(0.6))
+                .clipShape(Capsule())
+                .position(x: boxX, y: boxY - boxHeight / 2 - 16)
 
-            Rectangle()
+            Capsule()
                 .fill(levelColor)
-                .frame(width: 90, height: 2)
+                .frame(width: 80, height: 3)
                 .rotationEffect(.degrees(-vm.tiltRoll))
                 .position(x: size.width / 2, y: size.height / 2)
         }
         .allowsHitTesting(false)
     }
 
-    // MARK: 백보드 표시
+    // MARK: - 백보드 보정 마커
 
     private func backboardOverlay(size: CGSize) -> some View {
         ZStack {
             if let top = vm.backboardTop {
-                backboardMarker(top, label: "위", size: size)
+                backboardMarker(top, label: "TOP", size: size)
             }
             if let bottom = vm.backboardBottom {
-                backboardMarker(bottom, label: "아래", size: size)
+                backboardMarker(bottom, label: "BOT", size: size)
             }
             if let bb = vm.backboard {
                 Path { path in
@@ -413,31 +421,34 @@ struct LiveCameraView: View {
             .frame(width: 16, height: 16)
             .overlay(
                 Text(label)
-                    .font(HUD.font(12))
+                    .font(HUD.font(11, .bold))
                     .foregroundStyle(HUD.gold)
-                    .offset(x: 26)
+                    .offset(x: vm.rimOnRight ? -26 : 26)
             )
             .position(x: size.width * p.x, y: size.height * (1 - p.y))
     }
 
-    // MARK: 아이콘 버튼들
+    // MARK: - 상단 컨트롤 아이콘 (뒤로가기 버튼 상시 노출 + 메뉴 버튼 우측 배치)
 
-    private func hudIcon(_ name: String, active: Bool, size: CGFloat = 40) -> some View {
+    private func hudIcon(_ name: String, active: Bool, size: CGFloat = 38) -> some View {
         Image(systemName: name)
-            .font(.system(size: 15, weight: .semibold))
+            .font(.system(size: 15, weight: .bold))
             .frame(width: size, height: size)
-            .background(Color.black.opacity(active ? 0.9 : 0.6))
-            .overlay(Rectangle().stroke(active ? HUD.cyan : HUD.cyan.opacity(0.4), lineWidth: 1))
-            .foregroundStyle(active ? HUD.cyan : Color.white)
+            .background(.ultraThinMaterial)
+            .background(active ? HUD.orange : Color.black.opacity(0.55))
+            .clipShape(Circle())
+            .overlay(Circle().stroke(active ? HUD.orange : Color.white.opacity(0.25), lineWidth: 1))
+            .foregroundStyle(Color.white)
     }
 
     private func closeMenu() {
         withAnimation(.easeOut(duration: 0.2)) { menuOpen = false }
     }
 
-    private func closeButton(size: CGFloat) -> some View {
+    /// 메인 화면으로 나가는 되돌리기 버튼 (항상 표시)
+    private func backButton(size: CGFloat = 38) -> some View {
         Button { dismiss() } label: {
-            hudIcon("xmark", active: false, size: size)
+            hudIcon("arrow.uturn.backward", active: false, size: size)
         }
     }
 
@@ -472,8 +483,6 @@ struct LiveCameraView: View {
         .disabled(vm.calibration != nil || vm.calibrationStep != .off)
     }
 
-    // MARK: 메뉴 (버튼 1개 → 누르면 아이콘 4개가 펼쳐져요)
-
     private var menuToggleButton: some View {
         Button {
             withAnimation(.easeOut(duration: 0.2)) { menuOpen.toggle() }
@@ -487,31 +496,36 @@ struct LiveCameraView: View {
 
     private var menuItems: some View {
         HStack(spacing: 8) {
-            closeButton(size: 40)
-            guideButton(size: 40)
-            calibrateButton(size: 40)
-            manualButton(size: 40)
+            guideButton(size: 38)
+            calibrateButton(size: 38)
+            manualButton(size: 38)
         }
-        .transition(.opacity.combined(with: .move(edge: vm.rimOnRight ? .leading : .trailing)))
+        .transition(.opacity.combined(with: .scale(scale: 0.9)))
     }
 
-    /// leading = true 이면 버튼이 왼쪽 끝, 아이콘은 그 오른쪽으로 펼쳐져요
+    /// 왼쪽에 뒤로가기 버튼, 그 오른쪽에 메뉴 박스 버튼 배치
     private func menuGroup(leading: Bool) -> some View {
         HStack(spacing: 8) {
-            if leading { menuToggleButton }
-            if menuOpen { menuItems }
-            if !leading { menuToggleButton }
+            if leading {
+                backButton(size: 38)
+                menuToggleButton
+                if menuOpen { menuItems }
+            } else {
+                if menuOpen { menuItems }
+                backButton(size: 38)
+                menuToggleButton
+            }
         }
     }
 
-    // MARK: 림 크기 슬라이더 (한 줄짜리 작은 패널)
+    // MARK: - 림 크기 조절 슬라이더
 
     private var rimSizePanel: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             Text("림 크기")
-                .font(HUD.font(12, .semibold))
+                .font(HUD.font(12, .bold))
             Slider(value: $manualWidth, in: 0.02...max(0.05, 0.20 * Double(vm.orientation.widthScale)))
-                .tint(HUD.cyan)
+                .tint(HUD.gold)
                 .onChange(of: manualWidth) { _, new in
                     if let rim = vm.rim {
                         vm.setManualRim(x: rim.center.x, y: rim.center.y, width: new)
@@ -519,70 +533,89 @@ struct LiveCameraView: View {
                 }
         }
         .foregroundStyle(Color.white)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .frame(width: 240)
-        .background(Color.black.opacity(0.7))
-        .overlay(Rectangle().stroke(HUD.cyan.opacity(0.4), lineWidth: 1))
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .frame(width: 230)
+        .background(.ultraThinMaterial)
+        .background(Color.black.opacity(0.6))
+        .clipShape(Capsule())
+        .overlay(Capsule().stroke(Color.white.opacity(0.25), lineWidth: 1))
     }
 
-    // MARK: 위쪽 바
+    // MARK: - 상단 바 (메뉴 버튼 및 최상단 알림 배너)
 
-    /// 림 반대편 구석에는 메뉴 버튼, 림 쪽 구석에는 상태 글자
     private var topBar: some View {
-        VStack(spacing: 8) {
-            HStack(alignment: .top, spacing: 8) {
+        ZStack(alignment: .top) {
+            HStack(alignment: .center, spacing: 8) {
                 if vm.rimOnRight {
                     menuGroup(leading: true)
                     Spacer(minLength: 0)
-                    if !menuOpen { statusTag }
                 } else {
-                    if !menuOpen { statusTag }
                     Spacer(minLength: 0)
                     menuGroup(leading: false)
                 }
             }
 
-            if let notice = vm.notice {
-                Text(notice)
-                    .font(HUD.font(13, .semibold))
-                    .foregroundStyle(Color.black)
-                    .padding(.horizontal, 12).padding(.vertical, 8)
-                    .background(HUD.orange)
-            }
+            VStack(spacing: 6) {
+                if let notice = vm.notice {
+                    Text(notice)
+                        .font(HUD.font(13, .bold))
+                        .foregroundStyle(Color.black)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(HUD.gold)
+                        .clipShape(Capsule())
+                        .shadow(color: Color.black.opacity(0.45), radius: 8, y: 4)
+                }
 
-            if let error = vm.errorMessage {
-                Text(error).font(.caption).foregroundStyle(HUD.orange)
+                if let error = vm.errorMessage {
+                    Text(error)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .background(HUD.orange)
+                        .clipShape(Capsule())
+                        .shadow(color: Color.black.opacity(0.45), radius: 8, y: 4)
+                }
             }
+            .padding(.top, 4)
+            .allowsHitTesting(false)
         }
-        .foregroundStyle(Color.white)
-        .padding(8)
     }
 
     private var statusTag: some View {
-        Text(rimStatus)
-            .font(HUD.font(13, .semibold))
-            .foregroundStyle(Color.white)
-            .padding(.horizontal, 10).padding(.vertical, 6)
-            .background(Color.black.opacity(0.6))
-            .overlay(Rectangle().stroke(HUD.cyan.opacity(0.5), lineWidth: 1))
+        HStack(spacing: 6) {
+            Circle()
+                .fill(vm.rim != nil ? HUD.gold : HUD.orange)
+                .frame(width: 7, height: 7)
+            Text(rimStatus)
+                .font(HUD.font(12, .bold))
+                .foregroundStyle(Color.white)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .background(.ultraThinMaterial)
+        .background(Color.black.opacity(0.65))
+        .clipShape(Capsule())
+        .overlay(Capsule().stroke(Color.white.opacity(0.25), lineWidth: 1))
     }
 
     private var rimStatus: String {
-        if vm.calibration != nil { return "CALIBRATED · 보정 고정됨" }
+        if vm.calibration != nil { return "CALIBRATED · 보정 완료" }
         if vm.calibrationStep == .rim || (vm.isManualRim && vm.rim == nil) {
             return "TAP · 화면을 탭해 림 지정"
         }
         if vm.calibrationStep != .off { return "CALIBRATING · 보정 중" }
         if vm.isManualRim { return "MANUAL · 림 수동 지정" }
-        if vm.rim != nil { return "RIM LOCKED · 림 자동 인식됨" }
-        return vm.hasModel ? "SCANNING · 림 탐색 중…" : "모델 없음 · 메뉴에서 수동 지정"
+        if vm.rim != nil { return "RIM LOCKED · 림 인식됨" }
+        return vm.hasModel ? "SCANNING · 림 탐색 중…" : "모델 없음 · 수동 지정 필요"
     }
 
-    // MARK: 펼친 패널 내용 (버튼 줄이 맨 위)
+    // MARK: - 사이드 패널 내부 컨텐츠
 
     private var panelContent: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 8) {
             actionBar
 
             if vm.calibrationStep != .off {
@@ -606,7 +639,7 @@ struct LiveCameraView: View {
         .animation(.easeOut(duration: 0.25), value: vm.lastShot)
     }
 
-    // MARK: 버튼 줄
+    // MARK: - 액션 버튼 바
 
     private func actionButton(
         _ title: String,
@@ -616,22 +649,31 @@ struct LiveCameraView: View {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            HStack(spacing: 4) {
-                if let icon { Image(systemName: icon) }
+            HStack(spacing: 5) {
+                if let icon {
+                    Image(systemName: icon)
+                        .font(.system(size: 12, weight: .bold))
+                }
                 Text(title)
+                    .font(HUD.font(13, .bold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
-            .font(HUD.font(15))
-            .foregroundStyle(Color.white)
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .background(prominent ? HUD.orange : Color.black.opacity(0.75))
-            .overlay(Rectangle().stroke(prominent ? HUD.orange : HUD.cyan.opacity(0.6), lineWidth: 1))
+            .foregroundStyle(prominent ? Color.white : Color.white.opacity(0.95))
+            .frame(maxWidth: .infinity, minHeight: 38)
+            .background(prominent ? HUD.orange : Color.white.opacity(0.12))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(prominent ? HUD.orange : Color.white.opacity(0.22), lineWidth: 1)
+            )
         }
         .disabled(!enabled)
         .opacity(enabled ? 1 : 0.4)
     }
 
     private var actionBar: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             switch vm.calibrationStep {
             case .rim:
                 actionButton("취소") { vm.cancelCalibration() }
@@ -641,18 +683,19 @@ struct LiveCameraView: View {
                 actionButton("취소") { vm.cancelCalibration() }
             case .review:
                 actionButton("림 다시") { vm.redoRim() }
-                actionButton("백보드 다시") { vm.redoBackboard() }
-                actionButton("보정 고정", prominent: true, enabled: vm.canLock) { vm.goNext() }
+                actionButton("백보드") { vm.redoBackboard() }
+                actionButton("고정", prominent: true, enabled: vm.canLock) { vm.goNext() }
             case .off:
                 actionButton(
                     vm.calibration != nil ? "보정 해제" : "보정 시작",
-                    icon: vm.calibration != nil ? "xmark.circle" : "scope"
+                    icon: vm.calibration != nil ? "xmark.circle" : "scope",
+                    prominent: vm.calibration == nil
                 ) {
                     if vm.calibration != nil { vm.resetCalibration() } else { vm.startCalibration() }
                 }
                 if vm.showGuide {
                     actionButton(
-                        vm.rimOnRight ? "림: 오른쪽" : "림: 왼쪽",
+                        vm.rimOnRight ? "림: 우측" : "림: 좌측",
                         icon: "arrow.left.arrow.right"
                     ) { vm.rimOnRight.toggle() }
                 }
@@ -660,79 +703,80 @@ struct LiveCameraView: View {
         }
     }
 
-    // MARK: 체크리스트 카드
+    // MARK: - 체크리스트 & 보정 카드
 
     private func checkRow(_ check: GuideCheck) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: check.passed ? "checkmark.square.fill" : "xmark.square.fill")
-                .foregroundStyle(check.passed ? HUD.cyan : HUD.orange)
+        HStack(spacing: 8) {
+            Image(systemName: check.passed ? "checkmark.circle.fill" : "xmark.circle.fill")
+                .font(.system(size: 13))
+                .foregroundStyle(check.passed ? HUD.gold : HUD.orange)
             Text(check.title)
-                .font(HUD.font(13, .semibold))
+                .font(HUD.font(12, .semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
         }
     }
 
     private var guideCard: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(vm.isReady ? "READY · 촬영 준비 완료" : "CHECK · 촬영 준비 체크")
-                .font(HUD.font(15))
-                .foregroundStyle(vm.isReady ? HUD.cyan : Color.white)
+            HUDHeader(title: vm.isReady ? "READY · 준비 완료" : "SETUP CHECKLIST")
 
             if !vm.isReady {
-                DottedLine()
                 ForEach(vm.guideChecks) { check in
                     checkRow(check)
                 }
                 if let hint = vm.firstHint {
-                    Text("▶ \(hint)")
+                    Text(hint)
                         .font(.caption2)
                         .foregroundStyle(HUD.gold)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 2)
                 }
-                Text("폰은 가로로 삼각대에 고정 · 슈터 옆(측면)에서 · 가슴 높이(약 1.2~1.5m)")
-                    .font(.caption2)
-                    .foregroundStyle(HUD.dim)
             }
         }
-        .hudPanel(tint: HUD.cyan)
+        .hudPanel(tint: vm.isReady ? HUD.gold : Color.white)
     }
-
-    // MARK: 보정 카드
 
     private var stepTitle: String {
         switch vm.calibrationStep {
         case .rim: return "STEP 1 · 림 지정"
-        case .backboardTop: return "STEP 2 · 백보드 위쪽 끝"
-        case .backboardBottom: return "STEP 3 · 백보드 아래쪽 끝"
-        case .review: return "STEP 4 · 확인하고 고정"
+        case .backboardTop: return "STEP 2 · 백보드 상단"
+        case .backboardBottom: return "STEP 3 · 백보드 하단"
+        case .review: return "STEP 4 · 보정 확인"
         case .off: return ""
         }
     }
 
     private var stepDescription: String {
         switch vm.calibrationStep {
-        case .rim: return "림의 가운데를 탭하고, 림 크기 슬라이더로 점선 길이를 림 크기에 맞춰 주세요."
-        case .backboardTop: return "백보드에서 가장 높은 가장자리를 탭해 주세요."
-        case .backboardBottom: return "백보드에서 가장 낮은 가장자리를 탭해 주세요."
-        case .review: return "아래 5가지가 모두 통과하면 '보정 고정'을 누를 수 있어요."
+        case .rim: return "림 중앙을 탭하고 슬라이더로 크기를 맞추세요."
+        case .backboardTop: return "백보드 가장 위쪽 끝을 탭하세요."
+        case .backboardBottom: return "백보드 가장 아래쪽 끝을 탭하세요."
+        case .review: return "항목이 모두 통과되면 고정을 누르세요."
         case .off: return ""
         }
     }
 
     private var calibrationCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             HUDHeader(title: stepTitle)
-            Text(stepDescription).font(.caption)
+            Text(stepDescription)
+                .font(.caption2)
+                .foregroundStyle(HUD.dim)
+                .fixedSize(horizontal: false, vertical: true)
 
             if vm.calibrationStep == .review {
                 ForEach(vm.calibrationChecks) { check in
                     checkRow(check)
                 }
-                Text("TILT  롤 \(vm.tiltRoll, specifier: "%.1f")° · 피치 \(vm.tiltPitch, specifier: "%.1f")°")
-                    .font(HUD.font(12, .semibold).monospacedDigit())
+                Text("롤 \(vm.tiltRoll, specifier: "%.1f")° · 피치 \(vm.tiltPitch, specifier: "%.1f")°")
+                    .font(HUD.font(11, .semibold).monospacedDigit())
                     .foregroundStyle(HUD.dim)
                 if let hint = vm.firstCalibrationHint {
-                    Text("▶ \(hint)")
+                    Text(hint)
                         .font(.caption2)
                         .foregroundStyle(HUD.gold)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
@@ -740,93 +784,89 @@ struct LiveCameraView: View {
     }
 
     private func calibrationBadge(_ cal: CameraCalibration) -> some View {
-        HStack {
-            Text("CALIBRATED · 롤 \(cal.rollDegrees, specifier: "%.1f")°")
-                .font(HUD.font(13, .semibold))
-                .foregroundStyle(HUD.cyan)
+        HStack(spacing: 6) {
+            Image(systemName: "checkmark.seal.fill")
+                .foregroundStyle(HUD.gold)
+            Text("보정됨 · 롤 \(cal.rollDegrees, specifier: "%.1f")°")
+                .font(HUD.font(12, .bold))
+                .foregroundStyle(Color.white)
             Spacer()
         }
-        .hudPanel(tint: HUD.cyan)
+        .hudPanel(tint: HUD.gold)
     }
 
-    // MARK: 피드백 배너
+    // MARK: - 피드백 배너
 
     private func bannerColor(_ shot: ShotAnalysisReport) -> Color {
         switch shot.feedback {
-        case .perfect: HUD.cyan
+        case .perfect: HUD.gold
         case .flat: HUD.orange
-        case .steep: HUD.gold
+        case .steep: HUD.cyan
         }
     }
 
-    /// ⭐ 추가: 골 / 노골 표시
     private func goalTag(_ shot: ShotAnalysisReport) -> some View {
         Text(shot.made ? "GOAL" : "MISS")
-            .font(HUD.font(12))
+            .font(HUD.font(11, .heavy))
             .foregroundStyle(Color.white)
-            .padding(.horizontal, 6)
+            .padding(.horizontal, 7)
             .padding(.vertical, 2)
             .background(shot.made ? ShotColor.made : ShotColor.miss)
+            .clipShape(Capsule())
     }
 
     private func feedbackBanner(_ shot: ShotAnalysisReport) -> some View {
-        HStack(spacing: 12) {
-            Rectangle()
-                .fill(bannerColor(shot))
-                .frame(width: 4)
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 8) {
-                    Text(shot.feedback.title)
-                        .font(HUD.font(18))
-                    goalTag(shot)
-                }
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(String(format: "%.1f°", shot.measuredEntryAngle))
-                        .font(HUD.font(32).monospacedDigit())
-                        .foregroundStyle(HUD.orange)
-                    Text("TARGET 45° ± 2°")
-                        .font(HUD.font(13, .semibold))
-                        .foregroundStyle(HUD.gold)
-                }
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Text(shot.feedback.title)
+                    .font(HUD.font(15, .heavy))
+                goalTag(shot)
+                Spacer()
             }
-            Spacer(minLength: 0)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(String(format: "%.1f°", shot.measuredEntryAngle))
+                    .font(HUD.font(28, .black).monospacedDigit())
+                    .foregroundStyle(HUD.orange)
+                Text("목표 45° ±2°")
+                    .font(HUD.font(11, .semibold))
+                    .foregroundStyle(HUD.dim)
+            }
         }
-        .fixedSize(horizontal: false, vertical: true)
         .hudPanel(tint: bannerColor(shot))
-        .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
-    // MARK: 통계 패널 (Nike 스타일)
+    // MARK: - 누적 통계 패널 (Nike Run Club 스타일)
 
-    /// 목표 45° ±2° 안에 들어온 슛의 비율
     private var perfectRate: Double {
         guard !vm.shots.isEmpty else { return 0 }
         return Double(vm.shots.filter { $0.isPerfect }.count) / Double(vm.shots.count)
     }
 
-    private func stat(_ title: String, _ value: String, color: Color = HUD.orange) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
+    private func stat(_ title: String, _ value: String, color: Color = .white) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
             Text(title)
-                .font(HUD.font(10, .semibold))
+                .font(HUD.font(10, .bold))
                 .foregroundStyle(HUD.dim)
             Text(value)
-                .font(HUD.font(22).monospacedDigit())
+                .font(HUD.font(19, .heavy).monospacedDigit())
                 .foregroundStyle(color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// ⭐ 수정: 입사각 추이 — 골은 파랑, 노골은 빨강, 점선은 목표 45°
     private var statsChart: some View {
         Chart {
             RuleMark(y: .value("목표", ShotTarget.angle))
-                .foregroundStyle(HUD.cyan.opacity(0.7))
+                .foregroundStyle(HUD.gold.opacity(0.6))
                 .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
             ForEach(Array(vm.shots.enumerated()), id: \.offset) { index, shot in
                 LineMark(x: .value("슛", index), y: .value("각도", shot.measuredEntryAngle))
-                    .foregroundStyle(HUD.gold)
+                    .foregroundStyle(Color.white.opacity(0.5))
                 PointMark(x: .value("슛", index), y: .value("각도", shot.measuredEntryAngle))
                     .foregroundStyle(shot.made ? ShotColor.made : ShotColor.miss)
-                    .symbolSize(55)
+                    .symbolSize(45)
             }
         }
         .chartYScale(domain: 25...70)
@@ -836,7 +876,7 @@ struct LiveCameraView: View {
 
     private func legendDot(_ color: Color, _ text: String) -> some View {
         HStack(spacing: 4) {
-            Circle().fill(color).frame(width: 8, height: 8)
+            Circle().fill(color).frame(width: 6, height: 6)
             Text(text)
                 .font(HUD.font(10, .semibold))
                 .foregroundStyle(HUD.dim)
@@ -848,42 +888,40 @@ struct LiveCameraView: View {
             HUDHeader(title: "SHOT SUMMARY")
 
             HStack(alignment: .center, spacing: 12) {
-                RingGauge(progress: perfectRate, label: "\(Int(perfectRate * 100))%")
-                    .frame(width: 52, height: 52)
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 14) {
-                        stat("SHOTS", "\(vm.shots.count)", color: Color.white)
+                RingGauge(progress: perfectRate, label: "\(Int(perfectRate * 100))%", color: HUD.gold)
+                    .frame(width: 48, height: 48)
+
+                VStack(spacing: 6) {
+                    HStack(spacing: 8) {
+                        stat("SHOTS", "\(vm.shots.count)", color: .white)
                         stat("GOAL", "\(vm.madeCount)", color: ShotColor.made)
                     }
-                    HStack(spacing: 14) {
-                        stat("AVG", vm.averageAngle.map { String(format: "%.1f°", $0) } ?? "–")
+                    HStack(spacing: 8) {
+                        stat("AVG", vm.averageAngle.map { String(format: "%.1f°", $0) } ?? "–", color: HUD.orange)
                         stat("SPREAD", vm.consistency.map { String(format: "±%.1f°", $0) } ?? "–", color: HUD.gold)
                     }
                 }
             }
 
-            Text("동그라미 = 목표 45° ±2° 적중률")
-                .font(.caption2)
-                .foregroundStyle(HUD.dim)
-
             DottedLine()
 
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 ArcMapView(path: vm.lastShot?.path.points ?? [], rim: vm.rim)
-                    .frame(width: 80, height: 56)
+                    .frame(width: 72, height: 50)
                 statsChart
-                    .frame(height: 56)
+                    .frame(height: 50)
             }
 
-            HStack(spacing: 12) {
-                legendDot(ShotColor.made, "골")
-                legendDot(ShotColor.miss, "노골")
-                Text("점선 = 45°")
+            HStack(spacing: 10) {
+                legendDot(ShotColor.made, "성공")
+                legendDot(ShotColor.miss, "실패")
+                Spacer()
+                Text("길게 눌러 초기화")
                     .font(HUD.font(10, .semibold))
-                    .foregroundStyle(HUD.cyan)
+                    .foregroundStyle(HUD.dim)
             }
         }
-        .hudPanel(tint: HUD.orange)
+        .hudPanel(tint: Color.white.opacity(0.5))
         .onLongPressGesture { vm.resetStats() }
     }
 }

@@ -42,6 +42,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		2A3B7D3E30A4780500444D5C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		A00000000000000000000100 /* BasketballShotAnalyzer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BasketballShotAnalyzer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A00000000000000000000101 /* BasketballShotAnalyzerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BasketballShotAnalyzerApp.swift; sourceTree = "<group>"; };
 		A00000000000000000000102 /* NormalizedGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NormalizedGeometry.swift; sourceTree = "<group>"; };
@@ -99,6 +100,7 @@
 		A00000000000000000000301 /* BasketballShotAnalyzer */ = {
 			isa = PBXGroup;
 			children = (
+				2A3B7D3E30A4780500444D5C /* Info.plist */,
 				A00000000000000000000303 /* App */,
 				A00000000000000000000304 /* Models */,
 				A00000000000000000000305 /* Services */,
@@ -334,10 +336,13 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = BQL9T48R59;
+				DEVELOPMENT_TEAM = 5YYS9UB4F9;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BasketballShotAnalyzer/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "슛 아크 분석";
 				INFOPLIST_KEY_NSCameraUsageDescription = "슛 영상을 실시간으로 분석하기 위해 카메라가 필요합니다";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = UIInterfaceOrientationLandscapeLeft;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -360,10 +365,13 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = BQL9T48R59;
+				DEVELOPMENT_TEAM = 5YYS9UB4F9;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BasketballShotAnalyzer/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "슛 아크 분석";
 				INFOPLIST_KEY_NSCameraUsageDescription = "슛 영상을 실시간으로 분석하기 위해 카메라가 필요합니다";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = UIInterfaceOrientationLandscapeLeft;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
