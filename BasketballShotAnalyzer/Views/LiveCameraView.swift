@@ -42,7 +42,7 @@ struct CameraPreviewView: UIViewRepresentable {
     }
 }
 
-// MARK: - 실시간 분석 화면 (⭐ 가로 전용)
+// MARK: - 실시간 분석 화면 (가로 전용)
 
 struct LiveCameraView: View {
     @StateObject private var vm = LiveShotViewModel()
@@ -53,6 +53,9 @@ struct LiveCameraView: View {
 
     /// 메뉴(아이콘 모음)가 펼쳐져 있는지
     @State private var menuOpen = false
+
+    /// ⭐ 추가: 왼쪽 패널이 펼쳐져 있는지 (촬영 준비가 끝나면 자동으로 접혀요)
+    @State private var panelExpanded = true
 
     var body: some View {
         GeometryReader { screen in
@@ -91,6 +94,13 @@ struct LiveCameraView: View {
         }
         .onChange(of: vm.orientation) { _, new in
             manualWidth = 0.075 * Double(new.widthScale)
+            panelExpanded = true   // ⭐ 방향이 바뀌면 림을 다시 찾아야 하니 패널을 펼쳐요
+        }
+        // ⭐ 촬영 준비가 되면 패널을 왼쪽 위 작은 상자로 접어요
+        .onChange(of: vm.isReady) { _, ready in
+            if ready {
+                withAnimation(.easeOut(duration: 0.2)) { panelExpanded = false }
+            }
         }
     }
 
@@ -188,16 +198,9 @@ struct LiveCameraView: View {
                 .padding(.top, insets.top)
                 .padding(.horizontal, sideInset)
         }
-        // 림 반대편 옆 패널
+        // ⭐ 림 반대편 위쪽: 펼친 패널 또는 접힌 작은 상자
         .overlay(alignment: vm.rimOnRight ? .topLeading : .topTrailing) {
-            ScrollView {
-                panelContent
-                    .padding(8)
-            }
-            .frame(width: min(260, screen.width * 0.4))
-            .frame(maxHeight: screen.height - insets.top - insets.bottom - 72)
-            .padding(.top, insets.top + 64)
-            .padding(.horizontal, sideInset + 8)
+            sidePanel(screen: screen, insets: insets, sideInset: sideInset)
         }
         // 림 크기 슬라이더 (림 쪽 아래 구석)
         .overlay(alignment: vm.rimOnRight ? .bottomTrailing : .bottomLeading) {
@@ -207,6 +210,125 @@ struct LiveCameraView: View {
                     .padding(.bottom, insets.bottom + 8)
             }
         }
+    }
+
+    // MARK: ⭐ 옆 패널 (펼침 / 접힘)
+
+    @ViewBuilder
+    private func sidePanel(screen: CGSize, insets: EdgeInsets, sideInset: CGFloat) -> some View {
+        // 보정 중에는 버튼(다음, 취소 등)이 패널 안에 있어서 항상 펼쳐 둬요
+        let calibrating = vm.calibrationStep != .off
+
+        if panelExpanded || calibrating {
+            ScrollView {
+                VStack(spacing: 10) {
+                    if !calibrating { collapseButton }
+                    panelContent
+                }
+                .padding(8)
+            }
+            .frame(width: min(260, screen.width * 0.4))
+            .frame(maxHeight: screen.height - insets.top - insets.bottom - 72)
+            .padding(.top, insets.top + 64)
+            .padding(.horizontal, sideInset + 8)
+        } else {
+            summaryBox
+                .padding(.top, insets.top + 64)
+                .padding(.horizontal, sideInset + 8)
+        }
+    }
+
+    /// 펼친 패널 맨 위의 "접기" 버튼
+    private var collapseButton: some View {
+        Button {
+            withAnimation(.easeOut(duration: 0.2)) { panelExpanded = false }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "chevron.up")
+                Text("접기")
+            }
+            .font(HUD.font(13, .semibold))
+            .foregroundStyle(Color.white)
+            .frame(maxWidth: .infinity, minHeight: 36)
+            .background(Color.black.opacity(0.75))
+            .overlay(Rectangle().stroke(HUD.cyan.opacity(0.6), lineWidth: 1))
+        }
+    }
+
+    private func miniStat(_ title: String, _ value: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(title)
+                .font(HUD.font(9, .semibold))
+                .foregroundStyle(HUD.dim)
+            Text(value)
+                .font(HUD.font(20).monospacedDigit())
+                .foregroundStyle(color)
+        }
+    }
+
+    /// 접힌 작은 상자: 누르면 펼쳐져요
+    private var summaryBox: some View {
+        Button {
+            withAnimation(.easeOut(duration: 0.2)) { panelExpanded = true }
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    Image(systemName: vm.isReady ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                        .foregroundStyle(vm.isReady ? HUD.cyan : HUD.orange)
+                    Text(vm.isReady ? "READY" : "CHECK")
+                        .font(HUD.font(14))
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.down")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(HUD.dim)
+                }
+
+                HStack(spacing: 12) {
+                    miniStat("SHOTS", "\(vm.shots.count)", color: Color.white)
+                    miniStat("GOAL", "\(vm.madeCount)", color: ShotColor.made)
+                    miniStat("AVG",
+                             vm.averageAngle.map { String(format: "%.1f°", $0) } ?? "–",
+                             color: HUD.orange)
+                }
+
+                Text("TARGET 45° ± 2°")
+                    .font(HUD.font(10, .semibold))
+                    .foregroundStyle(HUD.gold)
+
+                // 방금 던진 슛 결과 (4초 동안만 보여요)
+                if let shot = vm.lastShot {
+                    HStack(spacing: 8) {
+                        Rectangle()
+                            .fill(bannerColor(shot))
+                            .frame(width: 3)
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 6) {
+                                Text(String(format: "%.1f°", shot.measuredEntryAngle))
+                                    .font(HUD.font(22).monospacedDigit())
+                                    .foregroundStyle(HUD.orange)
+                                goalTag(shot)
+                            }
+                            Text(shot.feedback.title)
+                                .font(.caption2)
+                                .foregroundStyle(Color.white)
+                        }
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+
+                // 준비가 안 됐으면 무엇을 해야 하는지 한 줄로 알려줘요
+                if !vm.isReady, let hint = vm.firstHint {
+                    Text("▶ \(hint)")
+                        .font(.caption2)
+                        .foregroundStyle(HUD.gold)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .foregroundStyle(Color.white)
+            .hudPanel(tint: vm.isReady ? HUD.cyan : HUD.orange)
+            .frame(width: 210)
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: 슛 라벨
@@ -457,7 +579,7 @@ struct LiveCameraView: View {
         return vm.hasModel ? "SCANNING · 림 탐색 중…" : "모델 없음 · 메뉴에서 수동 지정"
     }
 
-    // MARK: 옆 패널 전체 (버튼 줄이 맨 위)
+    // MARK: 펼친 패널 내용 (버튼 줄이 맨 위)
 
     private var panelContent: some View {
         VStack(spacing: 10) {
@@ -522,7 +644,6 @@ struct LiveCameraView: View {
                 actionButton("백보드 다시") { vm.redoBackboard() }
                 actionButton("보정 고정", prominent: true, enabled: vm.canLock) { vm.goNext() }
             case .off:
-                // ⭐ 가로/세로 버튼은 없어졌어요
                 actionButton(
                     vm.calibration != nil ? "보정 해제" : "보정 시작",
                     icon: vm.calibration != nil ? "xmark.circle" : "scope"
@@ -638,20 +759,33 @@ struct LiveCameraView: View {
         }
     }
 
+    /// ⭐ 추가: 골 / 노골 표시
+    private func goalTag(_ shot: ShotAnalysisReport) -> some View {
+        Text(shot.made ? "GOAL" : "MISS")
+            .font(HUD.font(12))
+            .foregroundStyle(Color.white)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(shot.made ? ShotColor.made : ShotColor.miss)
+    }
+
     private func feedbackBanner(_ shot: ShotAnalysisReport) -> some View {
         HStack(spacing: 12) {
             Rectangle()
                 .fill(bannerColor(shot))
                 .frame(width: 4)
             VStack(alignment: .leading, spacing: 2) {
-                Text(shot.feedback.title)
-                    .font(HUD.font(18))
+                HStack(spacing: 8) {
+                    Text(shot.feedback.title)
+                        .font(HUD.font(18))
+                    goalTag(shot)
+                }
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(String(format: "%.1f°", shot.measuredEntryAngle))
                         .font(HUD.font(32).monospacedDigit())
                         .foregroundStyle(HUD.orange)
-                    Text("TARGET " + String(format: "%.1f°", shot.targetEntryAngle))
-                        .font(HUD.font(13, .semibold).monospacedDigit())
+                    Text("TARGET 45° ± 2°")
+                        .font(HUD.font(13, .semibold))
                         .foregroundStyle(HUD.gold)
                 }
             }
@@ -664,6 +798,7 @@ struct LiveCameraView: View {
 
     // MARK: 통계 패널 (Nike 스타일)
 
+    /// 목표 45° ±2° 안에 들어온 슛의 비율
     private var perfectRate: Double {
         guard !vm.shots.isEmpty else { return 0 }
         return Double(vm.shots.filter { $0.isPerfect }.count) / Double(vm.shots.count)
@@ -675,21 +810,37 @@ struct LiveCameraView: View {
                 .font(HUD.font(10, .semibold))
                 .foregroundStyle(HUD.dim)
             Text(value)
-                .font(HUD.font(26).monospacedDigit())
+                .font(HUD.font(22).monospacedDigit())
                 .foregroundStyle(color)
         }
     }
 
+    /// ⭐ 수정: 입사각 추이 — 골은 파랑, 노골은 빨강, 점선은 목표 45°
     private var statsChart: some View {
-        Chart(Array(vm.shots.enumerated()), id: \.offset) { index, shot in
-            LineMark(x: .value("슛", index), y: .value("각도", shot.measuredEntryAngle))
-                .foregroundStyle(HUD.gold)
-            PointMark(x: .value("슛", index), y: .value("각도", shot.measuredEntryAngle))
-                .foregroundStyle(HUD.orange)
+        Chart {
+            RuleMark(y: .value("목표", ShotTarget.angle))
+                .foregroundStyle(HUD.cyan.opacity(0.7))
+                .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+            ForEach(Array(vm.shots.enumerated()), id: \.offset) { index, shot in
+                LineMark(x: .value("슛", index), y: .value("각도", shot.measuredEntryAngle))
+                    .foregroundStyle(HUD.gold)
+                PointMark(x: .value("슛", index), y: .value("각도", shot.measuredEntryAngle))
+                    .foregroundStyle(shot.made ? ShotColor.made : ShotColor.miss)
+                    .symbolSize(55)
+            }
         }
         .chartYScale(domain: 25...70)
         .chartXAxis(.hidden)
         .chartYAxis(.hidden)
+    }
+
+    private func legendDot(_ color: Color, _ text: String) -> some View {
+        HStack(spacing: 4) {
+            Circle().fill(color).frame(width: 8, height: 8)
+            Text(text)
+                .font(HUD.font(10, .semibold))
+                .foregroundStyle(HUD.dim)
+        }
     }
 
     private var statsPanel: some View {
@@ -699,20 +850,37 @@ struct LiveCameraView: View {
             HStack(alignment: .center, spacing: 12) {
                 RingGauge(progress: perfectRate, label: "\(Int(perfectRate * 100))%")
                     .frame(width: 52, height: 52)
-                HStack(spacing: 14) {
-                    stat("SHOTS", "\(vm.shots.count)", color: Color.white)
-                    stat("AVG", vm.averageAngle.map { String(format: "%.1f°", $0) } ?? "–")
-                    stat("SPREAD", vm.consistency.map { String(format: "±%.1f°", $0) } ?? "–", color: HUD.gold)
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 14) {
+                        stat("SHOTS", "\(vm.shots.count)", color: Color.white)
+                        stat("GOAL", "\(vm.madeCount)", color: ShotColor.made)
+                    }
+                    HStack(spacing: 14) {
+                        stat("AVG", vm.averageAngle.map { String(format: "%.1f°", $0) } ?? "–")
+                        stat("SPREAD", vm.consistency.map { String(format: "±%.1f°", $0) } ?? "–", color: HUD.gold)
+                    }
                 }
             }
+
+            Text("동그라미 = 목표 45° ±2° 적중률")
+                .font(.caption2)
+                .foregroundStyle(HUD.dim)
 
             DottedLine()
 
             HStack(spacing: 10) {
                 ArcMapView(path: vm.lastShot?.path.points ?? [], rim: vm.rim)
-                    .frame(width: 80, height: 46)
+                    .frame(width: 80, height: 56)
                 statsChart
-                    .frame(height: 46)
+                    .frame(height: 56)
+            }
+
+            HStack(spacing: 12) {
+                legendDot(ShotColor.made, "골")
+                legendDot(ShotColor.miss, "노골")
+                Text("점선 = 45°")
+                    .font(HUD.font(10, .semibold))
+                    .foregroundStyle(HUD.cyan)
             }
         }
         .hudPanel(tint: HUD.orange)

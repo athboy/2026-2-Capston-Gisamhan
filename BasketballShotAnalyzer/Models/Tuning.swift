@@ -26,6 +26,18 @@ enum Tuning {
         Item(id: "ballFitError", title: "포물선 허용 오차",
              detail: "점들이 포물선에서 벗어나도 되는 정도예요. 낮추면 엄격, 높이면 관대해요.",
              range: 0.005...0.05, step: 0.005, defaultValue: 0.02, kind: .slider, unit: ""),
+
+        // ⭐ 추가: 슛 개수를 정확하게 세기 위한 기준 3개
+        Item(id: "shotCooldown", title: "슛 사이 대기 시간",
+             detail: "슛 하나가 기록된 뒤 이 시간 동안은 새 슛을 세지 않아요. 던진 수보다 많이 기록되면 늘리고, 연달아 던진 슛을 놓치면 줄이세요.",
+             range: 2...10, step: 0.5, defaultValue: 5.0, kind: .slider, unit: "초"),
+        Item(id: "shotMinStart", title: "슛 최소 출발 거리",
+             detail: "림에서 화면 가로의 이만큼 이상 떨어진 곳에서 시작한 공만 슛으로 세요. 림 근처에서 튕기는 공을 거르는 기준이에요. 높이면 더 멀리서 던진 공만 인정해요.",
+             range: 0.05...0.40, step: 0.01, defaultValue: 0.15, kind: .slider, unit: ""),
+        Item(id: "makeRange", title: "골 판정 범위",
+             detail: "공이 림 높이를 지날 때 림 중심에서 림 반지름의 이 배수 안이면 골로 봐요. 노골인데 골로 나오면 낮추고, 골인데 노골로 나오면 높이세요.",
+             range: 0.4...1.5, step: 0.05, defaultValue: 0.8, kind: .slider, unit: "배"),
+
         Item(id: "backboardHeight", title: "백보드 실제 높이",
              detail: "코트 백보드를 줄자로 재서 맞춰 주세요. 국제 규격은 1.05m예요.",
              range: 0.8...1.3, step: 0.01, defaultValue: 1.05, kind: .slider, unit: "m"),
@@ -56,6 +68,9 @@ enum Tuning {
     static var ballConfidence: Float { Float(value("ballConfidence")) }
     static var ballMinSpan: CGFloat { CGFloat(value("ballMinSpan")) }
     static var ballFitError: CGFloat { CGFloat(value("ballFitError")) }
+    static var shotCooldown: Double { value("shotCooldown") }             // ⭐
+    static var shotMinStart: CGFloat { CGFloat(value("shotMinStart")) }   // ⭐
+    static var makeRange: CGFloat { CGFloat(value("makeRange")) }         // ⭐
     static var backboardHeight: CGFloat { CGFloat(value("backboardHeight")) }
     static var scaleTolerance: CGFloat { CGFloat(value("scaleTolerance")) }
     static var rollSign: Double { value("rollFlip") >= 0.5 ? -1 : 1 }

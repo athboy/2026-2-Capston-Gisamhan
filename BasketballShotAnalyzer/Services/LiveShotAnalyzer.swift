@@ -3,7 +3,7 @@ import CoreMedia
 import CoreVideo
 import CoreGraphics
 
-/// "이게 진짜 공이다"라고 인정하는 기준.
+/// "이게 진짜 공이다 / 진짜 슛이다"라고 인정하는 기준.
 /// 숫자 일부는 앱의 "튜닝 설정" 화면에서 바꾼 값으로 읽어요.
 private enum BallRule {
     /// Vision의 확신도 (0~1). 높을수록 엄격
@@ -20,10 +20,13 @@ private enum BallRule {
     static let minStreak = 2
     /// 공이 사라진 뒤 선을 남겨두는 시간 (초)
     static let holdSeconds = 0.5
-    /// ⭐ 추가: 슛이 확정된 뒤 새 슛을 세지 않는 시간 (초).
-    /// 튕겨 나온 공이나 바닥에 튀는 공을 새 슛으로 세지 않으려고 3초로 했어요.
-    /// 3초 안에 연달아 쏘는 슛을 놓치면 2.0~2.5로 줄이세요.
-    static let shotCooldown = 3.0
+
+    /// ⭐ 슛이 확정된 뒤 새 슛을 세지 않는 시간 (초) — 기본 5초 (튜닝 설정에서 변경)
+    static var shotCooldown: Double { Tuning.shotCooldown }
+    /// ⭐ 림에서 이만큼 떨어진 곳에서 시작한 공만 슛으로 인정 (림 근처 튕김 제거)
+    static var minStartDistance: CGFloat { Tuning.shotMinStart }
+    /// ⭐ 골 판정 범위 (림 반지름의 몇 배 안이면 골)
+    static var makeRange: CGFloat { Tuning.makeRange }
 }
 
 final class LiveShotAnalyzer: @unchecked Sendable {
@@ -36,6 +39,9 @@ final class LiveShotAnalyzer: @unchecked Sendable {
         let confidence: Float
         let start: NormalizedPoint
         let score: CGFloat
+        // ⭐ 추가: 골 판정에 쓰는 정보
+        let points: [NormalizedPoint]
+        let direction: CGFloat
     }
 
     private var handler = VNSequenceRequestHandler()
@@ -224,7 +230,7 @@ final class LiveShotAnalyzer: @unchecked Sendable {
         guard let rim = currentRim else { return }
 
         // 슛 후보 선별
-        // ⭐ 수정: 슛 확정 후 3초 동안은 새 후보를 받지 않아요 (튕긴 공 무시)
+        // ⭐ 수정: 슛 확정 후 shotCooldown(기본 5초) 동안은 새 후보를 받지 않아요
         let candidates = observations.compactMap { candidate(from: $0, rim: rim) }
         if let best = candidates.min(by: { $0.score < $1.score }),
            best.score < 0.8,
@@ -270,6 +276,13 @@ final class LiveShotAnalyzer: @unchecked Sendable {
         let apexX = -b / (2 * a)
         guard (rimX - apexX) * direction > 0 else { return nil }
 
+        // ⭐ 추가 1: 출발점이 림에서 충분히 멀어야 해요 (림 근처에서 튕기는 공 제거)
+        guard abs(first.x - rimX) >= BallRule.minStartDistance else { return nil }
+
+        // ⭐ 추가 2: 포물선 꼭대기가 림보다 높아야 해요 (바닥에서 튀는 공 제거)
+        let apexY = c - b * b / (4 * a)
+        guard apexY >= rim.center.y else { return nil }
+
         let predictedY = a * rimX * rimX + b * rimX + c
         let verticalError = abs(predictedY - rim.center.y)
         guard verticalError < 0.2 else { return nil }
@@ -279,7 +292,53 @@ final class LiveShotAnalyzer: @unchecked Sendable {
             + verticalError * 2
             + (1 - CGFloat(o.confidence)) * 0.15
             + max(0, 0.5 - (maxX - minX))
-        return Candidate(a: a, b: b, c: c, confidence: o.confidence, start: first, score: score)
+        return Candidate(
+            a: a, b: b, c: c,
+            confidence: o.confidence,
+            start: first,
+            score: score,
+            points: detected,
+            direction: direction
+        )
+    }
+
+    // MARK: - ⭐ 골 판정 (궤적으로 추정)
+
+    /// 공이 림 높이를 위→아래로 지날 때의 x 위치가 림 안쪽이면 골로 봐요.
+    private func isMade(_ p: Candidate, rim: RimCalibration) -> Bool {
+        let rimX = rim.center.x
+        let rimY = rim.center.y
+        let tolerance = rim.widthFraction / 2 * BallRule.makeRange
+        guard tolerance > 0 else { return false }
+
+        var crossX: CGFloat?
+
+        // 1) 실제로 관측된 점들 중 림 높이를 위→아래로 지난 구간이 있으면 그 위치를 써요
+        if p.points.count >= 2 {
+            for i in 1..<p.points.count {
+                let p0 = p.points[i - 1]
+                let p1 = p.points[i]
+                if p0.y >= rimY, p1.y < rimY {
+                    let t = (p0.y - rimY) / (p0.y - p1.y)
+                    crossX = p0.x + (p1.x - p0.x) * t
+                    break
+                }
+            }
+        }
+
+        // 2) 아직 림 높이까지 못 봤다면, 포물선을 연장해서 림 높이를 지나는 위치를 계산해요
+        if crossX == nil {
+            let discriminant = p.b * p.b - 4 * p.a * (p.c - rimY)
+            guard discriminant >= 0, p.a != 0 else { return false }
+            let root = discriminant.squareRoot()
+            let roots = [(-p.b + root) / (2 * p.a), (-p.b - root) / (2 * p.a)]
+            let dir: CGFloat = p.direction >= 0 ? 1 : -1
+            // 내려가는 쪽(공이 가는 방향으로 y가 줄어드는 쪽) 해를 고르기
+            crossX = roots.first { (2 * p.a * $0 + p.b) * dir < 0 }
+        }
+
+        guard let x = crossX else { return false }
+        return abs(x - rimX) <= tolerance
     }
 
     // MARK: - 슛 확정 → 리포트
@@ -298,23 +357,16 @@ final class LiveShotAnalyzer: @unchecked Sendable {
             measured = value
         }
 
-        let usedRim = calibration?.calibratedRim ?? rim
-        let usedRatio = calibration?.effectiveHeightToWidthRatio ?? heightToWidthRatio
-
-        let estimate = ShotPhysics.dynamicEstimate(
-            a: p.a, b: p.b,
-            releasePoint: p.start,
-            wrist: nil,
-            rim: usedRim,
-            heightToWidthRatio: usedRatio
-        )
-        let target = estimate?.targetEntryAngle ?? ShotPhysics.standardTargetAngle
+        // ⭐ 수정: 목표는 항상 45° 고정, 45° ±2° 안이면 "안정적"
+        let target = ShotTarget.angle
         let difference = measured - target
 
         let feedback: FeedbackTone
-        if abs(difference) <= 2 { feedback = .perfect }
+        if abs(difference) <= ShotTarget.tolerance { feedback = .perfect }
         else if difference < 0 { feedback = .flat }
         else { feedback = .steep }
+
+        let made = isMade(p, rim: rim)
 
         let steps = 40
         let startX = p.start.x, endX = rim.center.x
@@ -330,8 +382,9 @@ final class LiveShotAnalyzer: @unchecked Sendable {
             feedback: feedback,
             path: TrajectoryPath(points: path),
             confidence: min(max(Double(p.confidence), 0), 1),
-            physicalEstimate: estimate,
-            dynamicTargetAvailable: estimate != nil
+            physicalEstimate: nil,
+            dynamicTargetAvailable: false,
+            made: made
         ))
     }
 }
