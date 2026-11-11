@@ -21,7 +21,7 @@ final class LiveShotViewModel: ObservableObject {
     @Published private(set) var backboardBottom: NormalizedPoint?
     @Published private(set) var calibration: CameraCalibration?
 
-    // ⭐ 수정: 처음부터 가로로 시작해요 (세로는 없어졌어요)
+    // 가로 전용 화면 방향 + 안내 메시지
     @Published private(set) var orientation: ScreenOrientation = .landscapeRight
     @Published private(set) var notice: String?
 
@@ -30,7 +30,7 @@ final class LiveShotViewModel: ObservableObject {
     private var sessionID = UUID()
     private var sessionStart = Date()
 
-    // ⭐ 추가: 화면을 연 시각 (처음 몇 초 동안 방향이 자리 잡는 건 조용히 처리하려고요)
+    // 화면을 연 시각 (처음 몇 초 동안 방향이 자리 잡는 건 조용히 처리하려고요)
     private var startedAt = Date()
 
     let camera = LiveCameraService()
@@ -77,6 +77,9 @@ final class LiveShotViewModel: ObservableObject {
         return sqrt(variance)
     }
 
+    /// ⭐ 추가: 골 개수
+    var madeCount: Int { shots.filter { $0.made }.count }
+
     init() {
         camera.onFrame = { [analyzer] buffer in analyzer.process(buffer) }
         analyzer.onRim = { [weak self] rim in
@@ -99,7 +102,7 @@ final class LiveShotViewModel: ObservableObject {
     // MARK: - 시작 / 끝
 
     func start() {
-        // ⭐ 수정: 항상 가로로 시작
+        // 항상 가로로 시작
         OrientationController.request(landscape: true)
         let current = OrientationController.current()
         orientation = current.isLandscape ? current : .landscapeRight
@@ -114,7 +117,7 @@ final class LiveShotViewModel: ObservableObject {
             catch { errorMessage = error.localizedDescription }
         }
 
-        // ⭐ 추가: 화면이 다 돌아간 뒤 왼쪽 가로인지 오른쪽 가로인지 다시 확인
+        // 화면이 다 돌아간 뒤 왼쪽 가로인지 오른쪽 가로인지 다시 확인
         settleOrientation()
     }
 
@@ -126,7 +129,7 @@ final class LiveShotViewModel: ObservableObject {
         OrientationController.request(landscape: false)
     }
 
-    // MARK: - 화면 방향 (⭐ 가로 전용)
+    // MARK: - 화면 방향 (가로 전용)
 
     private func settleOrientation() {
         Task {
@@ -147,7 +150,7 @@ final class LiveShotViewModel: ObservableObject {
     }
 
     private func applyOrientation(_ new: ScreenOrientation) {
-        // ⭐ 세로는 무시하고, 가로(왼쪽↔오른쪽)가 바뀔 때만 처리해요
+        // 세로는 무시하고, 가로(왼쪽↔오른쪽)가 바뀔 때만 처리해요
         guard new.isLandscape, new != orientation else { return }
         let justStarted = Date().timeIntervalSince(startedAt) < 2.5
         orientation = new
@@ -310,7 +313,8 @@ final class LiveShotViewModel: ObservableObject {
                 targetAngle: report.targetEntryAngle,
                 difference: report.difference,
                 feedback: report.feedback.rawValue,
-                confidence: report.confidence
+                confidence: report.confidence,
+                made: report.made   // ⭐ 골 여부 저장
             )
         )
         saveSession()

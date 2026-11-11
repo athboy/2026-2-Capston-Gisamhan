@@ -1,4 +1,27 @@
 import Foundation
+import SwiftUI
+
+/// ⭐ 추가: 목표 입사각 (45° ±2°)
+enum ShotTarget {
+    static let angle = 45.0
+    static let tolerance = 2.0
+}
+
+/// ⭐ 추가: 점 색 (파랑 = 골, 빨강 = 노골)
+enum ShotColor {
+    static let made = Color(red: 0.25, green: 0.55, blue: 1.0)
+    static let miss = Color(red: 0.95, green: 0.25, blue: 0.22)
+    static let unknown = Color.gray
+
+    /// 판정이 없는 옛 기록(nil)은 회색으로 보여요
+    static func color(for result: Bool?) -> Color {
+        switch result {
+        case .some(true): return made
+        case .some(false): return miss
+        case .none: return unknown
+        }
+    }
+}
 
 /// 슛 1개의 기록
 struct ShotRecord: Codable, Identifiable, Equatable, Sendable {
@@ -7,16 +30,17 @@ struct ShotRecord: Codable, Identifiable, Equatable, Sendable {
     let measuredAngle: Double
     let targetAngle: Double
     let difference: Double
-    let feedback: String      // "perfect" / "flat" / "steep"
+    let feedback: String      // 예전 호환용 (지금은 각도로 다시 계산해요)
     let confidence: Double
+    /// ⭐ 추가: 골 여부 (옛 기록은 nil)
+    var made: Bool? = nil
+
+    /// ⭐ 45° 기준으로 다시 계산 (옛 기록도 45° 기준으로 보여요)
+    var diffFromTarget: Double { measuredAngle - ShotTarget.angle }
+    var isPerfect: Bool { abs(diffFromTarget) <= ShotTarget.tolerance }
 
     var feedbackTitle: String {
-        switch feedback {
-        case "perfect": "안정적"
-        case "flat": "낮음"
-        case "steep": "높음"
-        default: "-"
-        }
+        if isPerfect { "안정적" } else if diffFromTarget < 0 { "낮음" } else { "높음" }
     }
 }
 
@@ -41,10 +65,18 @@ struct ShotSession: Codable, Identifiable, Equatable, Sendable {
         return variance.squareRoot()
     }
 
-    /// 목표각 ±2° 안에 들어온 비율 (0~1)
+    /// 목표 45° ±2° 안에 들어온 비율 (0~1)
     var perfectRate: Double {
         guard !shots.isEmpty else { return 0 }
-        return Double(shots.filter { $0.feedback == "perfect" }.count) / Double(shots.count)
+        return Double(shots.filter(\.isPerfect).count) / Double(shots.count)
+    }
+
+    // ⭐ 추가: 골 관련
+    var hasMadeData: Bool { shots.contains { $0.made != nil } }
+    var madeCount: Int { shots.filter { $0.made == true }.count }
+    var madeRate: Double {
+        guard !shots.isEmpty else { return 0 }
+        return Double(madeCount) / Double(shots.count)
     }
 }
 
@@ -86,18 +118,25 @@ enum SessionStore {
         write(load().filter { !ids.contains($0.id) })
     }
 
-    /// 엑셀에서 열 수 있는 CSV 글자 만들기
+    /// 엑셀에서 열 수 있는 CSV 글자 만들기 (⭐ 골 여부 칸 추가)
     static func csv(for session: ShotSession) -> String {
-        var lines = ["번호,시각,측정 입사각,목표 입사각,차이,판정"]
+        var lines = ["번호,시각,측정 입사각,목표 입사각,차이,판정,골 여부"]
         let formatter = ISO8601DateFormatter()
         for (index, shot) in session.shots.enumerated() {
+            let goal: String
+            switch shot.made {
+            case .some(true): goal = "골"
+            case .some(false): goal = "노골"
+            case .none: goal = "-"
+            }
             lines.append([
                 "\(index + 1)",
                 formatter.string(from: shot.time),
                 String(format: "%.1f", shot.measuredAngle),
-                String(format: "%.1f", shot.targetAngle),
-                String(format: "%.1f", shot.difference),
-                shot.feedbackTitle
+                String(format: "%.1f", ShotTarget.angle),
+                String(format: "%.1f", shot.diffFromTarget),
+                shot.feedbackTitle,
+                goal
             ].joined(separator: ","))
         }
         return lines.joined(separator: "\n")

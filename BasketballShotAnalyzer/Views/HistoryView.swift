@@ -5,6 +5,14 @@ struct HistoryView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var sessions: [ShotSession] = SessionStore.load()
 
+    private func summary(_ session: ShotSession) -> String {
+        var text = "슛 \(session.shots.count)개"
+        if session.hasMadeData { text += " · 골 \(session.madeCount)" }
+        text += " · 평균 \(session.averageAngle.map { String(format: "%.1f°", $0) } ?? "–")"
+        text += " · 적중 \(Int(session.perfectRate * 100))%"
+        return text
+    }
+
     var body: some View {
         NavigationStack {
             Group {
@@ -28,7 +36,7 @@ struct HistoryView: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(session.startedAt.formatted(date: .abbreviated, time: .shortened))
                                         .font(HUD.font(16))
-                                    Text("슛 \(session.shots.count)개 · 평균 \(session.averageAngle.map { String(format: "%.1f°", $0) } ?? "–") · 안정적 \(Int(session.perfectRate * 100))%")
+                                    Text(summary(session))
                                         .font(.caption)
                                         .foregroundStyle(HUD.dim)
                                 }
@@ -61,27 +69,68 @@ struct HistoryView: View {
 struct SessionDetailView: View {
     let session: ShotSession
 
+    // ⭐ 입사각 추이: 골 = 파랑, 노골 = 빨강, 판정 없음 = 회색, 점선 = 목표 45°
+    private var trendChart: some View {
+        Chart {
+            RuleMark(y: .value("목표", ShotTarget.angle))
+                .foregroundStyle(HUD.cyan.opacity(0.7))
+                .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+            ForEach(Array(session.shots.enumerated()), id: \.element.id) { index, shot in
+                LineMark(x: .value("슛", index + 1), y: .value("각도", shot.measuredAngle))
+                    .foregroundStyle(HUD.gold)
+                PointMark(x: .value("슛", index + 1), y: .value("각도", shot.measuredAngle))
+                    .foregroundStyle(ShotColor.color(for: shot.made))
+                    .symbolSize(90)
+            }
+        }
+        .chartYScale(domain: 25...70)
+        .frame(height: 180)
+    }
+
+    private func legendDot(_ color: Color, _ text: String) -> some View {
+        HStack(spacing: 4) {
+            Circle().fill(color).frame(width: 9, height: 9)
+            Text(text).font(.caption)
+        }
+    }
+
+    private func resultText(_ shot: ShotRecord) -> String {
+        switch shot.made {
+        case .some(true): return "골"
+        case .some(false): return "노골"
+        case .none: return "–"
+        }
+    }
+
     var body: some View {
         List {
             Section("요약") {
                 row("촬영 시작", session.startedAt.formatted(date: .abbreviated, time: .shortened))
                 row("슛 개수", "\(session.shots.count)개")
+                row("골", session.hasMadeData
+                    ? "\(session.madeCount)개 (\(Int(session.madeRate * 100))%)"
+                    : "판정 없음")
                 row("평균 입사각", session.averageAngle.map { String(format: "%.1f°", $0) } ?? "–")
                 row("편차", session.spread.map { String(format: "±%.1f°", $0) } ?? "–")
-                row("안정적인 슛", "\(Int(session.perfectRate * 100))%")
+                row("목표", "45° ± 2°")
+                row("목표 적중 (±2°)", "\(Int(session.perfectRate * 100))%")
                 row("보정", session.calibrated ? "적용됨" : "없음")
                 row("촬영 방향", session.landscape ? "가로" : "세로")
             }
 
             Section("입사각 추이") {
-                Chart(Array(session.shots.enumerated()), id: \.element.id) { index, shot in
-                    LineMark(x: .value("슛", index + 1), y: .value("각도", shot.measuredAngle))
-                        .foregroundStyle(HUD.gold)
-                    PointMark(x: .value("슛", index + 1), y: .value("각도", shot.measuredAngle))
-                        .foregroundStyle(HUD.orange)
+                VStack(alignment: .leading, spacing: 8) {
+                    trendChart
+                    HStack(spacing: 14) {
+                        legendDot(ShotColor.made, "골")
+                        legendDot(ShotColor.miss, "노골")
+                        legendDot(ShotColor.unknown, "판정 없음")
+                        Spacer()
+                        Text("점선 = 목표 45°")
+                            .font(.caption)
+                            .foregroundStyle(HUD.cyan)
+                    }
                 }
-                .chartYScale(domain: 25...70)
-                .frame(height: 160)
             }
 
             Section("슛 목록") {
@@ -94,8 +143,12 @@ struct SessionDetailView: View {
                             .font(HUD.font(18).monospacedDigit())
                             .foregroundStyle(HUD.orange)
                         Spacer()
-                        Text("목표 " + String(format: "%.1f°", shot.targetAngle))
-                            .font(.caption)
+                        Text(resultText(shot))
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(ShotColor.color(for: shot.made))
+                            .frame(width: 40)
+                        Text(String(format: "%+.1f°", shot.diffFromTarget))
+                            .font(.caption.monospacedDigit())
                             .foregroundStyle(HUD.gold)
                         Text(shot.feedbackTitle)
                             .font(.caption.weight(.semibold))

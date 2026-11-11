@@ -28,14 +28,15 @@ enum FeedbackTone: String, Sendable {
         }
     }
 
+    // ⭐ 수정: 목표를 45° ±2°로 바꿨어요
     var detail: String {
         switch self {
         case .perfect:
-            "동적 목표각의 ±2° 안에 들어왔습니다. 현재 릴리즈 감각을 유지해보세요."
+            "목표 45° ±2° 안에 들어왔습니다. 현재 릴리즈 감각을 유지해보세요."
         case .flat:
-            "입사각이 목표보다 낮습니다. 릴리즈를 더 위로 밀어 올려 림 위의 여유 공간을 확보해보세요."
+            "입사각이 목표(45°)보다 낮습니다. 릴리즈를 더 위로 밀어 올려 림 위의 여유 공간을 확보해보세요."
         case .steep:
-            "입사각이 목표보다 높습니다. 점프 정점에서의 전방 추진을 조금 더 확보해보세요."
+            "입사각이 목표(45°)보다 높습니다. 점프 정점에서의 전방 추진을 조금 더 확보해보세요."
         }
     }
 }
@@ -61,6 +62,8 @@ struct ShotAnalysisReport: Equatable, Sendable {
     let confidence: Double
     let physicalEstimate: PhysicalEstimate?
     let dynamicTargetAvailable: Bool
+    /// ⭐ 추가: 골 여부 (궤적으로 추정한 값)
+    var made: Bool = false
 
     var isPerfect: Bool {
         feedback == .perfect
