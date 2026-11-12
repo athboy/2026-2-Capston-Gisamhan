@@ -126,7 +126,7 @@ final class LiveShotViewModel: ObservableObject {
         camera.stop()
         motion.stop()
         // 첫 화면은 세로용이라서 나갈 때 세로로 되돌려요
-        OrientationController.request(landscape: false)
+        OrientationController.request(landscape: true)
     }
 
     // MARK: - 화면 방향 (가로 전용)

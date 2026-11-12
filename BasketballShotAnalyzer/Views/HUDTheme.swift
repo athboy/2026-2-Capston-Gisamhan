@@ -1,24 +1,24 @@
 import SwiftUI
 
-// MARK: - 색과 글씨 (여기 숫자만 바꾸면 앱 전체 분위기가 바뀌어요)
+// MARK: - 색과 글씨 (Nike Run Club 다크 테마)
 
 enum HUD {
-    static let background = Color(red: 0.13, green: 0.13, blue: 0.14)   // 진한 회색 (Nike)
-    static let orange = Color(red: 0.93, green: 0.31, blue: 0.15)       // 주황 (Nike)
-    static let gold = Color(red: 0.72, green: 0.62, blue: 0.38)         // 금색 (Nike)
-    static let cyan = Color(red: 0.27, green: 0.95, blue: 0.95)         // 청록 네온 (HUD)
-    static let dim = Color.white.opacity(0.55)                          // 흐린 글씨
+    static let background = Color(red: 0.06, green: 0.06, blue: 0.07)   // 딥 매트 블랙
+    static let orange = Color(red: 1.00, green: 0.33, blue: 0.12)       // 나이키 크림슨 오렌지
+    static let gold = Color(red: 0.90, green: 0.96, blue: 0.24)         // 나이키 볼트(네온 옐로우)
+    static let cyan = Color(red: 0.20, green: 0.90, blue: 0.95)         // 스포츠 시안
+    static let dim = Color.white.opacity(0.60)                          // 보조 텍스트
 
-    /// 폭이 좁은 굵은 글씨 (Nike 리포트 느낌)
+    /// 스포티한 응축 폰트
     static func font(_ size: CGFloat, _ weight: Font.Weight = .bold) -> Font {
-        Font.system(size: size, weight: weight).width(.condensed)
+        Font.system(size: size, weight: weight, design: .default).width(.condensed)
     }
 }
 
-// MARK: - 모서리 괄호 ⌜ ⌝ ⌞ ⌟
+// MARK: - 뷰파인더 모서리 가이드
 
 struct CornerBrackets: Shape {
-    var length: CGFloat = 22
+    var length: CGFloat = 20
 
     func path(in rect: CGRect) -> Path {
         var p = Path()
@@ -43,7 +43,7 @@ struct CornerBrackets: Shape {
     }
 }
 
-// MARK: - 가로선 / 점선
+// MARK: - 구분선
 
 struct HLine: Shape {
     func path(in rect: CGRect) -> Path {
@@ -54,60 +54,67 @@ struct HLine: Shape {
     }
 }
 
-/// Nike 리포트의 점선 구분선
 struct DottedLine: View {
     var body: some View {
-        HLine()
-            .stroke(Color.white.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: [1, 3]))
+        Rectangle()
+            .fill(Color.white.opacity(0.12))
             .frame(height: 1)
     }
 }
 
-// MARK: - 소제목 (금색 글씨 + 흰 밑줄)
+// MARK: - 섹션 헤더
 
 struct HUDHeader: View {
     let title: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        HStack(spacing: 6) {
+            Capsule()
+                .fill(HUD.gold)
+                .frame(width: 3, height: 12)
             Text(title)
-                .font(HUD.font(11, .semibold))
+                .font(HUD.font(12, .heavy))
+                .tracking(0.8)
                 .foregroundStyle(HUD.gold)
-            Rectangle()
-                .fill(Color.white)
-                .frame(height: 1.5)
         }
     }
 }
 
-// MARK: - 라벨 박스 ("SHOT ARC" 같은 글자 상자)
+// MARK: - 캡슐형 라벨 태그 ("SHOT ARC" 등)
 
 struct HUDTag: View {
     let text: String
 
     var body: some View {
         Text(text)
-            .font(HUD.font(15, .semibold))
+            .font(HUD.font(13, .bold))
+            .tracking(0.5)
             .foregroundStyle(Color.white)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(Color.black.opacity(0.6))
-            .overlay(Rectangle().stroke(Color.white, lineWidth: 1.5))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(.ultraThinMaterial)
+            .background(Color.black.opacity(0.55))
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(Color.white.opacity(0.35), lineWidth: 1))
     }
 }
 
-// MARK: - 패널 (검은 반투명 + 얇은 테두리 + 작은 모서리 괄호)
+// MARK: - 모던 스포츠 카드 패널
 
 struct HUDPanel: ViewModifier {
     var tint: Color
 
     func body(content: Content) -> some View {
         content
-            .padding(12)
+            .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.black.opacity(0.72))
-            .overlay(Rectangle().stroke(tint.opacity(0.35), lineWidth: 1))
-            .overlay(CornerBrackets(length: 8).stroke(tint, lineWidth: 1.5))
+            .background(.ultraThinMaterial)
+            .background(Color.black.opacity(0.65))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(tint.opacity(0.45), lineWidth: 1)
+            )
     }
 }
 
@@ -117,10 +124,10 @@ extension View {
     }
 }
 
-// MARK: - 얇은 격자 (HUD 배경 느낌)
+// MARK: - 은은한 배경 그리드 (시야 방해 최소화)
 
 struct GridOverlay: View {
-    var spacing: CGFloat = 36
+    var spacing: CGFloat = 48
 
     var body: some View {
         Canvas { context, size in
@@ -137,38 +144,35 @@ struct GridOverlay: View {
                 path.addLine(to: CGPoint(x: size.width, y: y))
                 y += spacing
             }
-            context.stroke(path, with: .color(HUD.cyan.opacity(0.10)), lineWidth: 0.5)
+            context.stroke(path, with: .color(Color.white.opacity(0.04)), lineWidth: 0.5)
         }
         .allowsHitTesting(false)
     }
 }
 
-// MARK: - 링 게이지 (Nike의 동그란 그래프)
+// MARK: - 원형 링 게이지
 
 struct RingGauge: View {
-    let progress: Double      // 0 ~ 1
-    let label: String         // 가운데 글자
+    let progress: Double
+    let label: String
     var color: Color = HUD.orange
 
     var body: some View {
         ZStack {
             Circle()
-                .stroke(HUD.gold.opacity(0.35), lineWidth: 7)
+                .stroke(Color.white.opacity(0.15), lineWidth: 6)
             Circle()
                 .trim(from: 0, to: min(max(progress, 0), 1))
-                .stroke(color, style: StrokeStyle(lineWidth: 7, lineCap: .butt))
+                .stroke(color, style: StrokeStyle(lineWidth: 6, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-            Circle()
-                .stroke(Color.white.opacity(0.25), lineWidth: 1)
-                .padding(11)
             Text(label)
-                .font(HUD.font(15).monospacedDigit())
+                .font(HUD.font(14, .heavy).monospacedDigit())
                 .foregroundStyle(Color.white)
         }
     }
 }
 
-// MARK: - 미니맵 (왼쪽 위 작은 지도 느낌: 마지막 슛의 포물선과 림 위치)
+// MARK: - 궤적 미니맵
 
 struct ArcMapView: View {
     let path: [NormalizedPoint]
@@ -179,33 +183,16 @@ struct ArcMapView: View {
             let w = g.size.width
             let h = g.size.height
             ZStack {
-                Color.black.opacity(0.5)
+                Color.white.opacity(0.06)
 
-                // 격자
-                Path { p in
-                    for i in 1..<6 {
-                        let x = w * CGFloat(i) / 6
-                        p.move(to: CGPoint(x: x, y: 0))
-                        p.addLine(to: CGPoint(x: x, y: h))
-                    }
-                    for i in 1..<4 {
-                        let y = h * CGFloat(i) / 4
-                        p.move(to: CGPoint(x: 0, y: y))
-                        p.addLine(to: CGPoint(x: w, y: y))
-                    }
-                }
-                .stroke(HUD.cyan.opacity(0.18), lineWidth: 0.5)
-
-                // 마지막 슛의 포물선
                 Path { p in
                     for (i, pt) in path.enumerated() {
                         let point = CGPoint(x: w * pt.x, y: h * (1 - pt.y))
                         if i == 0 { p.move(to: point) } else { p.addLine(to: point) }
                     }
                 }
-                .stroke(Color.white, lineWidth: 1.5)
+                .stroke(HUD.gold, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
 
-                // 림 위치
                 if let rim {
                     Circle()
                         .fill(HUD.cyan)
@@ -213,7 +200,11 @@ struct ArcMapView: View {
                         .position(x: w * rim.center.x, y: h * (1 - rim.center.y))
                 }
             }
-            .overlay(Rectangle().stroke(Color.white.opacity(0.6), lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+            )
         }
     }
 }
