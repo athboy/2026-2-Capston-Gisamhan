@@ -339,7 +339,7 @@
 				DEVELOPMENT_TEAM = 5YYS9UB4F9;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = BasketballShotAnalyzer/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "슛 아크 분석";
+				INFOPLIST_KEY_CFBundleDisplayName = "ARC 45";
 				INFOPLIST_KEY_NSCameraUsageDescription = "슛 영상을 실시간으로 분석하기 위해 카메라가 필요합니다";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = UIInterfaceOrientationLandscapeLeft;
@@ -368,7 +368,7 @@
 				DEVELOPMENT_TEAM = 5YYS9UB4F9;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = BasketballShotAnalyzer/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "슛 아크 분석";
+				INFOPLIST_KEY_CFBundleDisplayName = "ARC 45";
 				INFOPLIST_KEY_NSCameraUsageDescription = "슛 영상을 실시간으로 분석하기 위해 카메라가 필요합니다";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = UIInterfaceOrientationLandscapeLeft;
