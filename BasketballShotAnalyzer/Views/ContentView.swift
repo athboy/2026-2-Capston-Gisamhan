@@ -16,7 +16,6 @@ struct ContentView: View {
             }
             .onChange(of: showLive) { _, isPresented in
                 if !isPresented {
-                    // 카메라 분석 화면을 닫고 나왔을 때도 가로 모드 재차 고정
                     OrientationController.request(landscape: true)
                 }
             }
@@ -43,7 +42,7 @@ struct ContentView: View {
 
     private var brandingSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("ON-DEVICE AI ANALYZER")
+            Text("ON-DEVICE AI SHOT ANALYZER")
                 .font(HUD.font(12, .heavy))
                 .tracking(1.5)
                 .foregroundStyle(Color.black)
@@ -52,12 +51,19 @@ struct ContentView: View {
                 .background(HUD.gold)
                 .clipShape(Capsule())
 
-            Text("SHOT ARC")
-                .font(HUD.font(60, .black))
-                .tracking(-1)
-                .foregroundStyle(Color.white)
+            // ARC 45 투톤 타이틀
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text("ARC")
+                    .font(HUD.font(64, .black))
+                    .tracking(-1)
+                    .foregroundStyle(Color.white)
+                Text("45")
+                    .font(HUD.font(64, .black))
+                    .tracking(-1)
+                    .foregroundStyle(HUD.orange)
+            }
 
-            Text("카메라로 슈팅 궤적을 실시간 추적하여\n입사각과 목표 아크 일관성을 분석합니다.")
+            Text("카메라로 슈팅 궤적을 실시간 추적하여\n입사각과 목표 아크(45°) 일관성을 분석합니다.")
                 .font(.subheadline)
                 .foregroundStyle(HUD.dim)
                 .lineSpacing(3)
