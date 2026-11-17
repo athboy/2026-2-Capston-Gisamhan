@@ -77,7 +77,7 @@ BasketballShotAnalyzer (ARC 45)
 └── Resources
     ├── Assets.xcassets                   # 앱 아이콘 및 컬러 에셋
     └── RimDetector.mlmodel               # 실내외 림(Rim) 및 공(Ball) 탐지 Core ML 모델
-
+```
 ---
 
 ## 🛠 기술 스택 및 분석 원리
