@@ -302,44 +302,108 @@ final class LiveShotAnalyzer: @unchecked Sendable {
         )
     }
 
-    // MARK: - ⭐ 골 판정 (궤적으로 추정)
+    // MARK: - ⭐ 골 판정 (5가지 조건 반영)
 
-    /// 공이 림 높이를 위→아래로 지날 때의 x 위치가 림 안쪽이면 골로 봐요.
-    private func isMade(_ p: Candidate, rim: RimCalibration) -> Bool {
-        let rimX = rim.center.x
-        let rimY = rim.center.y
-        let tolerance = rim.widthFraction / 2 * BallRule.makeRange
-        guard tolerance > 0 else { return false }
+        private func isMade(_ p: Candidate, rim: RimCalibration) -> Bool {
+            let rimX = rim.center.x
+            let rimY = rim.center.y
+            let halfRim = rim.widthFraction / 2
+            guard halfRim > 0 else { return false }
 
-        var crossX: CGFloat?
+            // [조건 2] 공 지름(24cm) vs 림 지름(45cm) 고려해 림 안쪽 여유 범위 적용
+            let innerTolerance = halfRim * min(BallRule.makeRange, 0.72)
 
-        // 1) 실제로 관측된 점들 중 림 높이를 위→아래로 지난 구간이 있으면 그 위치를 써요
-        if p.points.count >= 2 {
-            for i in 1..<p.points.count {
-                let p0 = p.points[i - 1]
-                let p1 = p.points[i]
-                if p0.y >= rimY, p1.y < rimY {
-                    let t = (p0.y - rimY) / (p0.y - p1.y)
-                    crossX = p0.x + (p1.x - p0.x) * t
-                    break
+            // [조건 5] 포물선 방정식으로 림 높이(rimY)에서의 하강 예측 x 계산
+            let predictedX = predictedCrossingX(p, rimY: rimY)
+
+            // [조건 1] 실제 관측 점들 중 림 높이를 위→아래로 가로지른 지점 찾기
+            var crossX: CGFloat?
+            var crossIndex: Int?
+            if p.points.count >= 2 {
+                for i in 1..<p.points.count {
+                    let p0 = p.points[i - 1]
+                    let p1 = p.points[i]
+                    if p0.y >= rimY, p1.y < rimY {
+                        let t = (p0.y - rimY) / (p0.y - p1.y)
+                        crossX = p0.x + (p1.x - p0.x) * t
+                        crossIndex = i
+                        break
+                    }
                 }
             }
+
+            // [조건 4] 림 근처에서 급격한 방향 전환(림 접촉) 감지
+            let hitRim = detectRimContact(points: p.points, rim: rim)
+
+            // Case A: 실제 통과 프레임이 관측된 경우
+            if let x = crossX, let idx = crossIndex {
+                // 1) 실제 통과 x가 림 안쪽 범위인지 확인
+                guard abs(x - rimX) <= innerTolerance else { return false }
+
+                // 2) [조건 5] 포물선 예측 위치와 크게 어긋나지 않는지 확인 (노이즈 제거)
+                if let predX = predictedX {
+                    guard abs(predX - rimX) <= halfRim * 0.9,
+                          abs(x - predX) <= rim.widthFraction * 0.35 else { return false }
+                }
+
+                // 3) [조건 3] 통과 후 림 아래에서 계속 하강하는지 확인
+                let afterPoints = Array(p.points[idx...])
+                for i in 1..<afterPoints.count {
+                    let prev = afterPoints[i - 1]
+                    let curr = afterPoints[i]
+                    // 다시 위로 튀어 오르거나 림 폭 밖으로 벗어나면 튕김(노골)
+                    if curr.y > prev.y + 0.015 { return false }
+                    if abs(curr.x - rimX) > rim.widthFraction * 0.75 { return false }
+                }
+
+                // 4) [조건 4] 림 접촉이 있었다면, 림 아래로 확실히 내려간 점이 있을 때만 인정
+                if hitRim {
+                    let confirmedBelow = afterPoints.contains {
+                        $0.y < rimY - 0.02 && abs($0.x - rimX) <= halfRim
+                    }
+                    return confirmedBelow
+                }
+
+                return true
+            }
+
+            // Case B: 그물/프레임 누락으로 통과 순간이 안 찍힌 경우 (보수적 포물선 판정)
+            // 림 접촉 의심 시 즉시 제외, 예측 위치가 림 중앙부에 정확히 들어올 때만 인정
+            guard !hitRim, let predX = predictedX else { return false }
+            return abs(predX - rimX) <= innerTolerance * 0.75
         }
 
-        // 2) 아직 림 높이까지 못 봤다면, 포물선을 연장해서 림 높이를 지나는 위치를 계산해요
-        if crossX == nil {
-            let discriminant = p.b * p.b - 4 * p.a * (p.c - rimY)
-            guard discriminant >= 0, p.a != 0 else { return false }
-            let root = discriminant.squareRoot()
+        /// 포물선(ax² + bx + c = rimY)에서 하강 방향의 x 해 계산
+        private func predictedCrossingX(_ p: Candidate, rimY: CGFloat) -> CGFloat? {
+            let d = p.b * p.b - 4 * p.a * (p.c - rimY)
+            guard d >= 0, p.a != 0 else { return nil }
+            let root = d.squareRoot()
             let roots = [(-p.b + root) / (2 * p.a), (-p.b - root) / (2 * p.a)]
             let dir: CGFloat = p.direction >= 0 ? 1 : -1
-            // 내려가는 쪽(공이 가는 방향으로 y가 줄어드는 쪽) 해를 고르기
-            crossX = roots.first { (2 * p.a * $0 + p.b) * dir < 0 }
+            return roots.first { (2 * p.a * $0 + p.b) * dir < 0 }
         }
 
-        guard let x = crossX else { return false }
-        return abs(x - rimX) <= tolerance
-    }
+        /// 림 근처에서 공의 속도 방향이 갑자기 꺾이면(튀어 오름/반전) 림 접촉으로 판단
+        private func detectRimContact(points: [NormalizedPoint], rim: RimCalibration) -> Bool {
+            guard points.count >= 3 else { return false }
+            let nearRange = rim.widthFraction * 0.8
+
+            for i in 1..<(points.count - 1) {
+                let p = points[i]
+                let isNearRim = abs(p.x - rim.center.x) <= nearRange
+                             && abs(p.y - rim.center.y) <= nearRange
+                guard isNearRim else { continue }
+
+                let v1x = p.x - points[i - 1].x, v1y = p.y - points[i - 1].y
+                let v2x = points[i + 1].x - p.x, v2y = points[i + 1].y - p.y
+
+                // 내려가다가 갑자기 위로 튕기거나(y 반전), 진행 방향이 90도 이상 꺾임(내적 < 0)
+                if (v1y < 0 && v2y > 0.01) || (v1x * v2x + v1y * v2y < 0) {
+                    return true
+                }
+            }
+            return false
+        }
 
     // MARK: - 슛 확정 → 리포트
 
